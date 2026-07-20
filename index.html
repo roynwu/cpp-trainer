@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>C++ Quant Trainer</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg2: #171a23;
+  --card: #1e222e;
+  --card2: #262b3a;
+  --border: #2f3547;
+  --text: #e8eaf0;
+  --muted: #9aa1b5;
+  --green: #58cc02;
+  --green-dark: #46a302;
+  --red: #ff4b4b;
+  --gold: #ffc800;
+  --blue: #1cb0f6;
+  --purple: #ce82ff;
+  --radius: 16px;
+  --mono: "SF Mono", "Menlo", "Consolas", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  padding-bottom: 90px;
+}
+.app { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+/* ---------- Header ---------- */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 4px 16px;
+}
+.header .logo { font-weight: 800; font-size: 20px; letter-spacing: -0.5px; }
+.logo span { color: var(--green); }
+.stats { display: flex; gap: 14px; align-items: center; }
+.stat { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 15px; }
+.stat.streak { color: var(--gold); }
+.stat.xp { color: var(--blue); }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card h2 { font-size: 18px; margin-bottom: 8px; }
+.card h3 { font-size: 15px; margin: 12px 0 6px; }
+.muted { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.tag {
+  display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--purple); background: rgba(206,130,255,0.12);
+  padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+}
+.tag.green { color: var(--green); background: rgba(88,204,2,0.12); }
+.tag.blue { color: var(--blue); background: rgba(28,176,246,0.12); }
+.tag.gold { color: var(--gold); background: rgba(255,200,0,0.12); }
+
+/* ---------- Level bar ---------- */
+.levelbar { margin: 10px 0 4px; }
+.levelbar .names { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.levelbar .names .current { color: var(--green); font-weight: 700; }
+.progress-track { background: var(--bg2); border-radius: 20px; height: 14px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, var(--green-dark), var(--green)); height: 100%; border-radius: 20px; transition: width 0.6s ease; }
+
+/* ---------- Question ---------- */
+.question-text { font-size: 17px; font-weight: 600; line-height: 1.45; margin-bottom: 16px; }
+.question-text code, .explain code, .lesson-body code, li code {
+  font-family: var(--mono); font-size: 0.88em; background: var(--bg2);
+  padding: 1px 6px; border-radius: 6px; color: #ffd479;
+}
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--card2); border: 2px solid var(--border); border-radius: 14px;
+  padding: 14px 16px; cursor: pointer; text-align: left; width: 100%;
+  color: var(--text); font-size: 15px; line-height: 1.4; font-family: inherit;
+  transition: border-color 0.15s, transform 0.05s;
+}
+.choice:active { transform: scale(0.99); }
+.choice:hover { border-color: #4a5268; }
+.choice .letter {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; background: var(--bg2);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--muted);
+}
+.choice.correct { border-color: var(--green); background: rgba(88,204,2,0.10); }
+.choice.correct .letter { background: var(--green); color: #08210a; }
+.choice.wrong { border-color: var(--red); background: rgba(255,75,75,0.10); }
+.choice.wrong .letter { background: var(--red); color: #fff; }
+.choice.dim { opacity: 0.45; pointer-events: none; }
+.choice:disabled { cursor: default; }
+.explain {
+  margin-top: 14px; padding: 14px 16px; border-radius: 12px; font-size: 14px; line-height: 1.55;
+  animation: slideup 0.25s ease;
+}
+.explain.good { background: rgba(88,204,2,0.10); border: 1px solid rgba(88,204,2,0.35); }
+.explain.bad { background: rgba(255,75,75,0.10); border: 1px solid rgba(255,75,75,0.35); }
+.explain .verdict { font-weight: 800; margin-bottom: 4px; }
+.explain.good .verdict { color: var(--green); }
+.explain.bad .verdict { color: var(--red); }
+@keyframes slideup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-block; background: var(--green); color: #08210a; font-weight: 800;
+  border: none; border-radius: 14px; padding: 14px 24px; font-size: 15px; cursor: pointer;
+  font-family: inherit; width: 100%; margin-top: 14px;
+  box-shadow: 0 4px 0 var(--green-dark); transition: transform 0.05s;
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-dark); }
+.btn.secondary { background: var(--card2); color: var(--text); box-shadow: 0 4px 0 var(--bg2); border: 1px solid var(--border); }
+.btn.small { width: auto; padding: 10px 18px; font-size: 13px; margin-top: 0; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- XP toast ---------- */
+.toast {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+  background: var(--gold); color: #3a2c00; font-weight: 800; padding: 10px 22px;
+  border-radius: 30px; z-index: 100; animation: toastin 0.3s ease; box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+}
+@keyframes toastin { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---------- Tabs ---------- */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2);
+  border-top: 1px solid var(--border); display: flex; justify-content: space-around;
+  padding: 8px 0 max(10px, env(safe-area-inset-bottom)); z-index: 50;
+}
+.tab {
+  background: none; border: none; color: var(--muted); font-family: inherit;
+  font-size: 11px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; padding: 4px 10px; border-radius: 10px;
+}
+.tab .icon { font-size: 20px; }
+.tab.active { color: var(--green); }
+
+/* ---------- Lessons list ---------- */
+.week-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 18px 4px 8px; }
+.lesson-row {
+  display: flex; align-items: center; gap: 14px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
+  cursor: pointer; width: 100%; color: var(--text); font-family: inherit; text-align: left;
+}
+.lesson-row:hover { border-color: #4a5268; }
+.lesson-row .num {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--card2);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--muted);
+  border: 2px solid var(--border);
+}
+.lesson-row.done .num { background: var(--green); color: #08210a; border-color: var(--green); }
+.lesson-row .info { flex: 1; }
+.lesson-row .title { font-weight: 700; font-size: 14px; }
+.lesson-row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.lesson-body { font-size: 15px; line-height: 1.65; }
+.lesson-body p { margin-bottom: 12px; }
+.lesson-body pre {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px;
+  line-height: 1.5; margin-bottom: 12px; color: #d8dce8;
+}
+.lesson-body pre code { background: none; padding: 0; color: inherit; }
+.keypoints { margin: 8px 0 12px 0; padding-left: 20px; }
+.keypoints li { margin-bottom: 8px; font-size: 14px; line-height: 1.5; }
+.backlink { color: var(--blue); background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0; margin-bottom: 14px; display: inline-block; }
+
+/* ---------- Misc ---------- */
+.bignum { font-size: 34px; font-weight: 800; }
+.row2 { display: flex; gap: 12px; }
+.row2 .card { flex: 1; margin-bottom: 16px; text-align: center; }
+.empty { text-align: center; padding: 40px 16px; color: var(--muted); }
+.empty .big { font-size: 40px; margin-bottom: 10px; }
+.pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pill { font-size: 12px; font-weight: 700; background: var(--card2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; color: var(--muted); }
+.combo-badge { color: var(--gold); font-weight: 800; font-size: 13px; margin-left: 8px; }
+.topic-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.topic-btn {
+  font-size: 13px; font-weight: 700; background: var(--card2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 8px 14px; color: var(--muted); cursor: pointer; font-family: inherit;
+}
+.topic-btn.active { background: rgba(88,204,2,0.15); border-color: var(--green); color: var(--green); }
+.reset-link { color: var(--muted); background: none; border: none; font-family: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="tabbar">
+  <button class="tab" data-view="today"><span class="icon">&#9889;</span>Today</button>
+  <button class="tab" data-view="lessons"><span class="icon">&#128218;</span>Lessons</button>
+  <button class="tab" data-view="practice"><span class="icon">&#127919;</span>Practice</button>
+  <button class="tab" data-view="review"><span class="icon">&#128257;</span>Review</button>
+  <button class="tab" data-view="profile"><span class="icon">&#127942;</span>Me</button>
+</div>
+
+<script>
+"use strict";
+
+/* ================= DATA ================= */
+const LESSONS = [
+{id:1,week:1,weekTheme:"How computers work",topic:"Memory",title:"How a C++ Program Actually Runs",
+teaser:"Program vs process, what the compiler produces, and the fetch-decode-execute loop.",
+body:"<p>Coming from Python, the biggest mental shift is this: Python runs your code line by line through an interpreter. C++ is <b>compiled</b> — your entire program is translated to machine instructions <i>before</i> it ever runs. The CPU never sees your C++; it only sees the machine code the compiler produced.</p><h3>Your first program, and how to actually run it</h3><pre>// main.cpp\n#include &lt;iostream&gt;   // like Python's import — brings in printing\n\nint main() {            // every C++ program starts at main()\n    int x = 5;          // typed variable — the type is mandatory\n    int y = 10;\n    std::cout &lt;&lt; x + y &lt;&lt; \"\\n\";  // print — like print(x + y)\n    return 0;           // 0 = success, returned to the OS\n}</pre><p>Compile and run it from a terminal:</p><pre>g++ -Wall main.cpp -o my_program   # compile: source → executable\n./my_program                        # run: OS creates a process</pre><p><code>-Wall</code> turns on warnings — always use it. The output file <code>my_program</code> is an <b>executable</b>: real machine instructions, sitting inert on disk like any other file.</p><h3>What happens when you run it</h3><p>The OS creates a <b>process</b> — a live instance of your program — and gives it its own private virtual address space, laid out roughly like this:</p><pre>+------------------+\n|      Stack       |  ← local variables, function calls (grows down)\n|        ↓         |\n|        ↑         |\n|       Heap       |  ← new/malloc allocations (grows up)\n+------------------+\n|     Globals      |  ← global/static variables\n+------------------+\n|   Code (.text)   |  ← your compiled instructions\n+------------------+</pre><p>One program can back many processes: run <code>./my_program</code> in two terminals and you have two processes, each with its own isolated memory. The CPU executes each one with a simple loop — <b>fetch</b> the next instruction, <b>decode</b> it, <b>execute</b> it — billions of times per second.</p><h3>See it yourself</h3><pre>g++ -S main.cpp -o main.s   # stop after generating assembly\ncat main.s                   # this is what the CPU actually runs</pre><p><b>Try it:</b> compile the program above with each of <code>-S</code> (assembly), <code>-c</code> (object file), and no flag (executable). You've just watched the whole pipeline: source → assembly → machine code → running process.</p>",
+keyPoints:["Program = passive file on disk. Process = running instance with its own address space.","The CPU never executes C++ — only compiled machine instructions.","Executables aren't fully loaded into RAM on launch — pages load on demand.","Address space regions: code, globals, heap (grows up), stack (grows down)."]},
+
+{id:2,week:1,weekTheme:"How computers work",topic:"Pointers & Language",title:"Bits, Bytes & Why Pointers Exist",
+teaser:"Memory as numbered mailboxes, and pointers as just addresses.",
+body:"<p>Python hides memory from you completely. C++ shows you everything — so first, the model: RAM is one giant array of numbered byte-sized slots. The number of a slot is its <b>address</b>. An <code>int</code> is 4 bytes, so it occupies 4 consecutive slots.</p><h3>Pointer syntax, from zero</h3><pre>int x = 5;      // an int living at some address, say 0x1000\n\nint* p = &x;    // & means \"address of\" — p now holds 0x1000\n                // int* is the TYPE: \"pointer to int\"\n\nstd::cout &lt;&lt; x;    // 5      (the value)\nstd::cout &lt;&lt; p;    // 0x1000 (the address stored in p)\nstd::cout &lt;&lt; *p;   // 5      (* means \"value AT that address\" — dereference)\n\n*p = 99;        // write 99 to the address p holds...\nstd::cout &lt;&lt; x;    // 99 — x changed! p and x refer to the same bytes</pre><p>Read <code>int* p = &x</code> aloud as: \"p is a pointer to int, initialized with the address of x.\" That's all a pointer is — a variable whose value is an address. On 64-bit systems every pointer is 8 bytes regardless of what it points to, because it just stores an address.</p><h3>Pointers and arrays</h3><pre>int arr[3] = {10, 20, 30};  // 12 contiguous bytes\nint* p = arr;                // arrays decay to a pointer to their first element\np[1]      // 20 — identical to arr[1]\n*(p + 1)  // 20 — pointer arithmetic: +1 means \"one int (4 bytes) forward\"</pre><p>Note: <code>p + 1</code> advances by <code>sizeof(int)</code> bytes, not 1 byte — pointer arithmetic is in units of the pointed-to type.</p><h3>Endianness — a guaranteed interview question</h3><p>Multi-byte values have a byte <i>order</i>. Little-endian (x86/x64) stores the least-significant byte at the lowest address. Write the checker yourself:</p><pre>#include &lt;cstdint&gt;\n#include &lt;iostream&gt;\n\nbool isLittleEndian() {\n    uint32_t x = 1;                 // bytes: 01 00 00 00 (little-endian)\n    unsigned char* bytePtr =\n        reinterpret_cast&lt;unsigned char*&gt;(&x);  // view the SAME bytes as chars\n    return bytePtr[0] == 1;         // first byte 1 → least-significant first\n}\n\nint main() {\n    std::cout &lt;&lt; (isLittleEndian() ? \"little\" : \"big\") &lt;&lt; \"\\n\";\n}</pre><p><code>reinterpret_cast</code> says \"treat this address as pointing at a different type\" — here, letting us inspect an int's individual bytes. Network byte order is big-endian, which is why socket code calls <code>htons()</code>/<code>ntohl()</code> to convert.</p><p><b>Try it:</b> write a program that prints the address (<code>&v</code>) and <code>sizeof(v)</code> for a <code>char</code>, an <code>int</code>, a <code>double</code>, and a pointer. Then print all 4 bytes of <code>uint32_t x = 0x12345678</code> one by one and confirm the order is reversed on your machine.</p>",
+keyPoints:["A pointer is a variable holding a memory address — that's it.","`sizeof` any pointer on 64-bit = 8 bytes.","x86/x64 is little-endian; network byte order is big-endian (hence `htons`/`ntohl`).","Pointers exist for cheap passing of big data, sharing/mutating state, and dynamic structures."]},
+
+{id:3,week:1,weekTheme:"How computers work",topic:"Memory",title:"Stack vs Heap",
+teaser:"Why stack allocation is nearly free, and why returning &local is a bug.",
+body:"<p>Every variable you declare lives somewhere. C++ gives you two main somewheres, and choosing between them is a daily decision Python never asked you to make.</p><h3>The stack: automatic, fast, small</h3><p>Every function call pushes a <b>frame</b> onto the stack holding that call's local variables; returning pops it. Watch it grow and shrink:</p><pre>void bar() { int b = 2; }        // frame: [b]\nvoid foo() { int a = 1; bar(); } // frame: [a], then bar's on top\nint main() { foo(); }\n\nStack during bar():        After bar() returns:\n+---------------+          +---------------+\n| bar():  b=2   | ← top    | (gone — freed  |\n+---------------+          |  by moving the |\n| foo():  a=1   |          |  stack pointer)|\n+---------------+          +---------------+\n| main()        |          | foo():  a=1   |\n+---------------+          +---------------+</pre><p>\"Freeing\" a frame is just moving the stack pointer back up — no cleanup work at all. That's why stack allocation is essentially free: one pointer bump. The cost: frames die when the function returns, and the whole stack is small (~1-8MB) — deep recursion or huge local arrays overflow it and crash.</p><h3>The heap: manual, flexible, slower</h3><pre>int* p = new int(5);     // ask the heap allocator for 4 bytes\n// ... use *p — it survives across function returns ...\ndelete p;                // YOU must give it back (until you learn RAII)</pre><p>The allocator has to search its bookkeeping for a free block, mark it used, and later reabsorb it — real work, sometimes with locking. Slower than a pointer bump, but the memory lives until you free it and can be any size.</p><h3>The bug this explains</h3><pre>int* bad() {\n    int x = 5;\n    return &x;    // ✗ x's frame is popped when bad() returns —\n}                 //   the pointer now points at dead memory (dangling)\n\nint* ok() {\n    return new int(5);   // ✓ heap memory survives the return\n}</pre><p>Compile <code>bad()</code> with <code>-Wall</code> and g++ warns you: <code>address of local variable 'x' returned</code>. Using that pointer is undefined behavior — it might even <i>appear</i> to work until the next function call overwrites the bytes. \"Appears to work\" + \"is actually UB\" is a very C++ combination worth learning early.</p><h3>Where do containers live?</h3><pre>void f() {\n    std::vector&lt;int&gt; v(1000);\n    // v itself (ptr + size + capacity, ~24 bytes) → STACK\n    // the 1000 ints v manages              → HEAP\n}   // v's destructor frees the heap buffer automatically — a preview of RAII</pre><p><b>Try it:</b> write a function with infinite recursion and run it — observe the stack overflow crash. Then write <code>bad()</code> above, compile with <code>-Wall</code>, and read the warning text carefully. Learn what the compiler's warnings look like now, while the programs are small.</p>",
+keyPoints:["Stack: pointer-bump fast, scope-tied lifetime, small fixed size (~1-8MB), can overflow.","Heap: allocator bookkeeping, manual lifetime, large.","Never return a pointer/reference to a stack local.","Container objects live where declared; their buffers live on the heap."]},
+
+{id:4,week:1,weekTheme:"How computers work",topic:"Pointers & Language",title:"References vs Pointers",
+teaser:"Aliases vs addresses — and the trap question about null references.",
+body:"<p>C++ has a second way to refer to an existing object: the <b>reference</b>. Where a pointer is a box holding an address, a reference is an <b>alias</b> — a second name for the same object.</p><h3>Syntax side by side</h3><pre>int x = 5;\n\nint* p = &x;   // pointer: holds x's address\n*p = 10;       // must dereference with * to reach x\np = &other;    // can be re-aimed at something else\np = nullptr;   // can point at nothing\n\nint& r = x;    // reference: r IS x from now on\nr = 20;        // no * needed — writes straight to x\n// r can NEVER be re-bound. r = y; doesn't rebind r,\n// it assigns y's VALUE into x. Big difference!</pre><p>Two must-know rules: a reference <b>must</b> be initialized when declared (<code>int& r;</code> won't compile — try it), and it can never be reseated afterward.</p><h3>Where you'll actually use them: function parameters</h3><pre>void byValue(int n)      { n += 1; }   // copies — caller unaffected\nvoid byPointer(int* n)   { if (n) *n += 1; }  // must null-check\nvoid byReference(int& n) { n += 1; }   // no copy, no null-check, clean syntax\n\nint a = 5;\nbyValue(a);      // a still 5\nbyPointer(&a);   // a now 6 — note the & at the call site\nbyReference(a);  // a now 7 — call site looks like byValue!</pre><p>The workhorse pattern for passing big objects without copying is <code>const T&</code> — \"look, don't touch, don't copy\":</p><pre>void print(const std::string& s);   // no copy, can't modify, accepts temporaries\nprint(\"hello\");   // works — const& binds to temporaries; plain & doesn't</pre><h3>Choosing between them</h3><pre>Use a REFERENCE when:  the thing must always exist (most parameters)\nUse a POINTER  when:  \"nothing\" is a valid state (nullptr),\n                       you need to re-aim it,\n                       or you need arithmetic (arrays/buffers)</pre><h3>The interview trap</h3><p>\"Can a reference be null?\" The complete answer has two halves: not through valid C++ (must bind to a real object at birth) — but undefined behavior like <code>int& r = *static_cast&lt;int*&gt;(nullptr);</code> can technically produce one. Giving both halves is the senior signal. Related: you can't store raw references in a <code>vector</code> (they're not reassignable, which containers require) — that's what <code>std::reference_wrapper</code> is for.</p><p><b>Try it:</b> write <code>swap(int& a, int& b)</code>, then rewrite it with pointers. Compare the call sites. Then try to declare <code>int& r;</code> uninitialized and read the compiler error — you'll never forget the rule.</p>",
+keyPoints:["Pointer: nullable, reassignable, arithmetic, explicit deref. Reference: none of those.","References must be initialized at declaration.","Use pointers when 'no value' is meaningful or reassignment/arithmetic is needed.","Can't store raw references in a vector — that's why `std::reference_wrapper` exists."]},
+
+{id:5,week:2,weekTheme:"Memory management",topic:"Memory",title:"new/delete vs malloc/free",
+teaser:"The single most-asked question — and its 'second level'.",
+body:"<p>This is question #1 in your InterviewDB PDF, and it layers beautifully. Let's build up from code you can run.</p><h3>First: classes, constructors, destructors in 30 seconds</h3><pre>class Widget {\npublic:\n    Widget()  { std::cout &lt;&lt; \"constructed\\n\"; }   // runs at creation\n    ~Widget() { std::cout &lt;&lt; \"destroyed\\n\"; }     // runs at destruction\n};</pre><h3>Now watch the difference</h3><pre>#include &lt;cstdlib&gt;   // malloc/free\n\n// malloc: raw bytes only. Constructor NEVER runs.\nWidget* a = (Widget*)malloc(sizeof(Widget));  // prints nothing!\nfree(a);                                       // prints nothing!\n\n// new: allocate AND construct. delete: destruct AND deallocate.\nWidget* b = new Widget();   // prints \"constructed\"\ndelete b;                    // prints \"destroyed\"</pre><p>Run this and the output <i>is</i> the interview answer: <code>malloc</code> hands you raw uninitialized bytes as a <code>void*</code> (you must cast); <code>new</code> allocates, runs the constructor, and returns a typed pointer. Failure differs too: <code>malloc</code> returns NULL; <code>new</code> throws <code>std::bad_alloc</code>.</p><h3>The rules that prevent undefined behavior</h3><pre>int* arr = new int[10];\ndelete[] arr;   // new[] pairs with delete[] — plain delete here is UB\n\nWidget* w = new Widget();\nfree(w);        // ✗ UB: destructor skipped + allocator mismatch\n// Never mix the malloc/free and new/delete families.</pre><h3>The second level: what interviewers hope you volunteer</h3><p><b>1. The <code>new</code> expression vs <code>operator new</code>.</b> The expression <code>new Widget()</code> actually does two separate things: calls <code>operator new(sizeof(Widget))</code> (just an allocation function, like malloc), then runs the constructor on those bytes. They're separable — which enables:</p><p><b>2. Placement new</b> — construct an object into memory you <i>already</i> own:</p><pre>alignas(Widget) char buffer[sizeof(Widget)];  // raw stack bytes\nWidget* w = new (buffer) Widget();  // construct IN buffer — no allocation!\nw-&gt;~Widget();                        // must destroy manually — no delete</pre><p>This is the engine inside every custom allocator, memory pool, and <code>std::vector</code> itself.</p><p><b>3. Why vector doesn't use <code>new Widget[capacity]</code>:</b> <code>new[]</code> would construct <i>every</i> slot immediately. But a vector with capacity 100 and size 3 must have 97 slots of raw, unconstructed memory. So vector allocates raw bytes, then placement-news each element only when you actually add it. Allocation and construction, separated — the same two-step insight, now explaining a real STL design decision. Land that connection and you've aced this question.</p><p><b>Try it:</b> run the Widget demo above and confirm which lines print. Then do the placement-new version. Finally, explain out loud why <code>free()</code> on a <code>new</code>-ed object leaks — your Widget's prints already showed you.</p>",
+keyPoints:["`new` = allocate + construct; `malloc` = allocate only.","`free` on a `new`-ed object skips the destructor; mixing families is UB.","Placement new: construct in existing memory; manually call the destructor after.","`vector` avoids `new[]` because it needs uninitialized capacity."]},
+
+{id:6,week:2,weekTheme:"Memory management",topic:"RAII & Move",title:"Object Lifetime & RAII",
+teaser:"Why C++ doesn't need a garbage collector.",
+body:"<p>RAII is the single most important C++ idiom — it's how the language manages memory, files, locks, and sockets safely <i>without</i> a garbage collector. The name is terrible (\"Resource Acquisition Is Initialization\"); the idea is simple: <b>tie a resource to an object's lifetime</b>. Constructor grabs it, destructor releases it, and C++ guarantees the destructor runs at scope exit — no matter how the scope exits.</p><h3>Build an RAII wrapper yourself</h3><pre>#include &lt;cstdio&gt;\n\nclass FileHandle {\npublic:\n    FileHandle(const char* path) {\n        file_ = fopen(path, \"r\");        // ACQUIRE in constructor\n        std::printf(\"opened\\n\");\n    }\n    ~FileHandle() {\n        if (file_) fclose(file_);         // RELEASE in destructor\n        std::printf(\"closed\\n\");\n    }\n    FILE* get() { return file_; }\nprivate:\n    FILE* file_;\n};\n\nvoid process() {\n    FileHandle f(\"data.txt\");   // prints \"opened\"\n    doWork();                     // might throw an exception...\n}   // prints \"closed\" HERE — even if doWork() threw. Guaranteed.</pre><p>Compare the manual version — this is the bug RAII eliminates:</p><pre>void processUnsafe() {\n    FILE* f = fopen(\"data.txt\", \"r\");\n    doWork();      // if this throws → fclose is never reached → LEAK\n    fclose(f);\n}</pre><p>Every early <code>return</code>, every <code>throw</code>, every code path — the destructor runs. That determinism is why the whole standard library is built on RAII: <code>vector</code> (owns a heap buffer), <code>fstream</code> (owns a file), <code>lock_guard</code> (owns a mutex lock), <code>unique_ptr</code> (owns any pointer):</p><pre>#include &lt;memory&gt;\nauto p = std::make_unique&lt;Widget&gt;();  // heap Widget, no delete needed —\n                                        // unique_ptr's destructor does it</pre><h3>Rules interviewers probe</h3><p><b>Destruction order:</b> members are constructed in <i>declaration order</i> (top to bottom in the class), destroyed in reverse. If a constructor throws partway, already-built members are properly destroyed — but the object's own destructor never runs (it never fully existed).</p><p><b>The virtual destructor rule:</b></p><pre>class Base { public: ~Base() {} };            // ✗ not virtual\nclass Derived : public Base {\n public: ~Derived() { /* releases stuff */ }\n};\nBase* b = new Derived();\ndelete b;    // only ~Base() runs — Derived's cleanup SKIPPED. Leak/UB.\n\n// Fix: class Base { public: virtual ~Base() {} };</pre><p>Rule of thumb: any class with a virtual function needs a virtual destructor.</p><p><b>Try it:</b> build the FileHandle class, call it in a function that throws an exception halfway, and watch \"closed\" still print. Then reproduce the virtual-destructor bug with print statements in both destructors — seeing Derived's message vanish teaches it permanently.</p>",
+keyPoints:["RAII = resource lifetime tied to object lifetime; destructors run even during exceptions.","It applies to any resource: memory, locks, files, sockets.","Members destroy in reverse declaration order.","Base classes used polymorphically need virtual destructors."]},
+
+{id:7,week:2,weekTheme:"Memory management",topic:"RAII & Move",title:"Copy vs Move Semantics",
+teaser:"Stealing instead of copying — and why emplace_back wins.",
+body:"<p>Move semantics (C++11) is the most important modern-C++ topic in these interviews. Build it up from the problem it solves.</p><h3>The problem: copying is expensive</h3><pre>class Buffer {\npublic:\n    Buffer(size_t n) : data_(new int[n]), size_(n) {}\n    ~Buffer() { delete[] data_; }\n\n    // COPY constructor: duplicate the whole buffer — O(n)\n    Buffer(const Buffer& other)\n        : data_(new int[other.size_]), size_(other.size_) {\n        std::copy(other.data_, other.data_ + size_, data_);\n    }\nprivate:\n    int* data_;\n    size_t size_;\n};\n\nBuffer a(1000000);\nBuffer b = a;        // copy ctor: allocates + copies a million ints</pre><p>But what if the source is a <b>temporary</b> that's about to die anyway? Copying its data just to destroy the original is pure waste. Enter:</p><h3>The move constructor: steal, don't copy</h3><pre>    // MOVE constructor: steal the pointer — O(1)\n    Buffer(Buffer&& other) noexcept\n        : data_(other.data_), size_(other.size_) {  // take their pointer\n        other.data_ = nullptr;    // null out the source so its\n        other.size_ = 0;          // destructor doesn't free OUR data\n    }</pre><p>Read the pieces: <code>Buffer&&</code> is an <b>rvalue reference</b> — it only binds to temporaries (\"rvalues\"), which is exactly what makes stealing safe. The body is two pointer assignments — O(1) regardless of buffer size. The source is left <i>valid but empty</i> (destructible, reassignable, contents unspecified).</p><pre>Buffer c = std::move(a);  // move ctor runs: c steals a's buffer. a is empty.</pre><p><code>std::move</code> is the most misleadingly-named thing in C++: it moves nothing. It's a <i>cast</i> to <code>Buffer&&</code>, telling the compiler \"you may treat this as a temporary — stealing allowed.\" The move constructor does the actual work.</p><h3>lvalue vs rvalue, precisely</h3><pre>int x = 5;\n// x       → lvalue: named, persistent, addressable\n// 5       → rvalue: temporary, no identity\n// x + 3   → rvalue: the result is a temporary\nBuffer make() { return Buffer(10); }\n// make()  → rvalue: return-by-value produces a temporary</pre><h3>Why this answers the Jane Street classic</h3><pre>vec.push_back(Widget(a, b));  // 1) construct temporary  2) MOVE it in\nvec.emplace_back(a, b);       // construct ONCE, directly in the\n                               // vector's storage (placement new)</pre><p>One construction vs two — that's the whole answer to \"why is emplace_back faster?\"</p><h3>Two rules that bite in practice</h3><p><b>noexcept matters:</b> mark move constructors <code>noexcept</code> (as above). During reallocation, <code>vector</code> only uses moves it knows can't throw — otherwise it falls back to copying everything, silently.</p><p><b>Rule of Five / Rule of Zero:</b> if you hand-write any of {destructor, copy ctor, copy assign, move ctor, move assign}, you probably need all five (defining a destructor suppresses auto-generated moves!). Better: the <b>Rule of Zero</b> — build your class from RAII members (<code>vector</code>, <code>string</code>, <code>unique_ptr</code>) and write none of the five; the compiler generates them all correctly.</p><p><b>Try it:</b> add <code>std::cout</code> prints to Buffer's copy and move constructors, then run <code>Buffer b = a;</code>, <code>Buffer c = std::move(a);</code>, and <code>vec.push_back(Buffer(10))</code>. Predict which prints fire before each line. When your predictions hit 100%, you own this topic.</p>",
+keyPoints:["Move = steal internals, O(1); source left valid but unspecified.","`std::move` is just a cast — the move ctor does the actual work.","`emplace_back` constructs in place; `push_back` makes a temporary first.","Move ctors need `noexcept` or vector reallocation falls back to copying."]},
+
+{id:8,week:3,weekTheme:"STL internals",topic:"STL",title:"vector Internals",
+teaser:"Amortized O(1), geometric growth, and iterator invalidation.",
+body:"<p><code>std::vector</code> is the container you'll use 90% of the time, and \"implement vector\" is a real interview task at these firms. Understand it by building it.</p><h3>What a vector actually is</h3><pre>template &lt;typename T&gt;\nclass SimpleVector {\n    T* data_;          // pointer to a heap buffer\n    size_t size_;      // how many elements are in use\n    size_t capacity_;  // how many fit before we must reallocate\n};\n// That's it. Three fields, ~24 bytes. The elements live on the heap.</pre><h3>Watch growth happen</h3><pre>std::vector&lt;int&gt; v;\nfor (int i = 0; i &lt; 5; ++i) {\n    v.push_back(i);\n    std::cout &lt;&lt; \"size=\" &lt;&lt; v.size()\n              &lt;&lt; \" cap=\" &lt;&lt; v.capacity() &lt;&lt; \"\\n\";\n}\n// Typical output (libstdc++): cap goes 1, 2, 4, 4, 8 — doubling</pre><p>When a push exceeds capacity, the vector: (1) allocates a bigger block (~2x), (2) moves every element across, (3) destroys the old elements and frees the old block. That single push cost O(n) — but doubling makes reallocations exponentially rarer, so n pushes cost O(n) total: <b>amortized O(1)</b> per push. If it grew by +1 instead, every push would copy everything: O(n²) total. Geometric growth is the whole trick.</p><h3>Implement the core yourself (memorize this shape)</h3><pre>void push_back(const T& value) {\n    if (size_ == capacity_) grow();\n    data_[size_++] = value;\n}\n\nvoid grow() {\n    size_t newCap = capacity_ == 0 ? 1 : capacity_ * 2;\n    T* newData = new T[newCap];              // simplified — real vector\n    for (size_t i = 0; i &lt; size_; ++i)       // uses raw alloc + placement\n        newData[i] = std::move(data_[i]);    // new (see Lesson 5!)\n    delete[] data_;\n    data_ = newData;\n    capacity_ = newCap;\n}</pre><h3>The gotchas interviews test</h3><pre>std::vector&lt;int&gt; v = {1, 2, 3};\nint* p = &v[0];\nv.push_back(4);        // may reallocate → p now DANGLES\n// Reallocation invalidates ALL iterators/pointers/references.\n\nv.clear();             // size → 0, but capacity UNCHANGED\nv.shrink_to_fit();     // non-binding request to release capacity\n\nstd::vector&lt;int&gt; w;\nw.reserve(1000);       // pre-allocate: no reallocation for 1000 pushes\n                        // — the #1 cheap optimization in real code</pre><p><b>Try it:</b> run the growth-printing loop on your machine and find your compiler's growth factor. Then finish SimpleVector: add <code>operator[]</code>, <code>size()</code>, a destructor, and a copy constructor (Lesson 7 shows the move constructor). You will genuinely be asked to write something like this.</p>",
+keyPoints:["`push_back` is amortized O(1) — individual pushes can be O(n).","Growth is geometric (~1.5-2x, implementation-defined).","Reallocation invalidates everything; erase invalidates from that point on.","`clear()` doesn't release capacity; `reserve()` prevents reallocation."]},
+
+{id:9,week:3,weekTheme:"STL internals",topic:"STL",title:"string & Small String Optimization",
+teaser:"Why short strings never touch the heap.",
+body:"<p><code>std::string</code> is conceptually a <code>vector&lt;char&gt;</code> — but with one clever twist that's a favorite senior-signal interview question.</p><h3>The observation that motivates it</h3><p>Most real strings are short: ticker symbols (\"AAPL\"), field names, small identifiers. Heap-allocating 5 bytes via the general allocator — with all its bookkeeping — for every tiny string would be absurd overhead. So implementations store short strings <b>inline, inside the string object's own bytes</b>. No heap allocation at all.</p><h3>See it on your machine</h3><pre>std::string s = \"hi\";\nstd::cout &lt;&lt; sizeof(s) &lt;&lt; \"\\n\";      // typically 32 — regardless of content\nstd::cout &lt;&lt; s.capacity() &lt;&lt; \"\\n\";   // often 15 or 22 for an EMPTY string —\n                                          // that's the inline (SSO) buffer size!\n\nstd::string big(100, 'x');\n// 100 chars &gt; SSO buffer → this one IS heap-allocated</pre><h3>How it's implemented (interview sketch)</h3><pre>class SimpleString {\n    static constexpr size_t SSO_CAP = 15;\n    union {                        // same bytes, two interpretations:\n        char inline_[SSO_CAP + 1]; //  short: chars stored right here\n        char* heap_;               //  long:  pointer to heap buffer\n    };\n    size_t size_;\n    bool onHeap_;\npublic:\n    SimpleString(const char* s) {\n        size_ = strlen(s);\n        if (size_ &lt;= SSO_CAP) {\n            memcpy(inline_, s, size_ + 1);   // no allocation!\n            onHeap_ = false;\n        } else {\n            heap_ = new char[size_ + 1];\n            memcpy(heap_, s, size_ + 1);\n            onHeap_ = true;\n        }\n    }\n    ~SimpleString() { if (onHeap_) delete[] heap_; }\n};</pre><p>A <code>union</code> lets the same bytes serve as either the inline buffer or the heap pointer — that's how the object stays at 32 bytes for both cases.</p><h3>The subtlety interviewers love</h3><p>Moving a <i>heap-backed</i> string is a true O(1) pointer steal (Lesson 7). But an SSO string's data lives <i>inside the object</i> — there's no pointer to steal. Its \"move\" must copy the inline bytes. Still cheap (≤22 bytes, stack-local), but not the O(1) pointer swap — knowing this distinction is exactly the second-level answer that scores.</p><p><b>Try it:</b> print <code>capacity()</code> of strings of length 1, 15, 16, 22, 23 on your machine and find your standard library's exact SSO threshold. Then add copy and move constructors to SimpleString, handling both the inline and heap cases — the move case forces you to internalize why SSO moves differ.</p>",
+keyPoints:["SSO stores short strings inline in the object — zero heap traffic.","Threshold ~15 (libstdc++) to ~22 (libc++) chars; object is usually 32 bytes.","SSO strings don't get O(1) moves — inline bytes must be copied.","Concrete example of allocation-avoiding, cache-friendly STL design."]},
+
+{id:10,week:3,weekTheme:"STL internals",topic:"STL",title:"Hash Maps: Collisions & Load Factor",
+teaser:"Buckets, chaining vs probing, and when O(1) lies to you.",
+body:"<p>\"How is a hashmap implemented? How do you handle collisions?\" — direct from your InterviewDB PDF. Python's <code>dict</code> spoiled you; now you get to build one.</p><h3>The core mechanism</h3><pre>buckets (array, size 8):\nindex:   0    1    2    3        4    5    6    7\n        [ ]  [ ]  [ ]  [cat:1]  [ ]  [ ]  [ ]  [ ]\n\ninsert(\"cat\", 1):  hash(\"cat\") % 8 = 3  → bucket 3\nlookup(\"cat\"):     hash(\"cat\") % 8 = 3  → jump straight there. O(1).</pre><p>A <b>hash function</b> turns a key into a number; mod the bucket count gives an index. No scanning — that's the whole O(1) story. Until:</p><h3>Collisions</h3><pre>insert(\"dog\", 2):  hash(\"dog\") % 8 = 3  → bucket 3 is TAKEN</pre><p>Two strategies — know both:</p><p><b>Chaining</b> (what <code>std::unordered_map</code> uses): each bucket holds a little list; colliding entries append to it. Lookup in a crowded bucket degrades to scanning its chain.</p><pre>bucket 3: [cat:1] → [dog:2] → null</pre><p><b>Open addressing</b>: no lists — on collision, probe forward for the next free slot (<code>dog</code> goes to bucket 4). Better cache locality (no pointer-chasing), but clusters form and deletion needs tombstones.</p><h3>Build one — this is an actual interview task</h3><pre>#include &lt;vector&gt;\n#include &lt;utility&gt;\n#include &lt;functional&gt;\n\nclass HashMap {   // chaining, simplified\n    std::vector&lt;std::vector&lt;std::pair&lt;std::string,int&gt;&gt;&gt; buckets_;\npublic:\n    HashMap() : buckets_(8) {}\n\n    void insert(const std::string& key, int value) {\n        auto& bucket = buckets_[std::hash&lt;std::string&gt;{}(key) % buckets_.size()];\n        for (auto& kv : bucket)\n            if (kv.first == key) { kv.second = value; return; }  // update\n        bucket.push_back({key, value});                           // insert\n    }\n\n    int* find(const std::string& key) {\n        auto& bucket = buckets_[std::hash&lt;std::string&gt;{}(key) % buckets_.size()];\n        for (auto& kv : bucket)\n            if (kv.first == key) return &kv.second;\n        return nullptr;\n    }\n};</pre><h3>Load factor and rehashing</h3><p><b>Load factor</b> = size / bucket_count. As it climbs, chains lengthen and O(1) rots. Past a threshold (default 1.0 for <code>unordered_map</code>), the map <b>rehashes</b>: ~doubles the bucket array and redistributes every element — O(n) once, amortized O(1) overall (the same geometric argument as vector's growth, Lesson 8). <code>m.reserve(n)</code> pre-sizes buckets to skip rehashes, exactly like vector's reserve.</p><p><b>Worst case</b>: if everything collides (bad or adversarial hash), lookup is O(n) — one long chain. \"O(1)\" is always <i>average-case, given a good hash and sane load factor</i>. Say it that way.</p><p><b>Try it:</b> build the HashMap above and test it. Then sabotage it — replace the hash with <code>return 0;</code> — and print how long lookups take with 10,000 entries vs the real hash. You've just demonstrated the O(n) worst case from your own code.</p>",
+keyPoints:["Collision handling: chaining (std uses this) vs open addressing.","Average O(1); worst case O(n) with pathological hashing.","Rehash triggers past max load factor; invalidates iterators.","Good hash = deterministic, fast, uniformly distributed."]},
+
+{id:11,week:4,weekTheme:"STL + language",topic:"STL",title:"map vs unordered_map, and deque",
+teaser:"Tree vs hash table, and the segmented-array trick.",
+body:"<p>Two containers, two clever structures — and two questions straight from your PDF.</p><h3>Part A: map vs unordered_map</h3><pre>#include &lt;map&gt;\n#include &lt;unordered_map&gt;\n\nstd::map&lt;std::string,int&gt; m;            // red-black TREE\nstd::unordered_map&lt;std::string,int&gt; um; // HASH TABLE (Lesson 10)\n\nm[\"b\"]=2; m[\"a\"]=1; m[\"c\"]=3;\nfor (auto& [k,v] : m)  std::cout &lt;&lt; k;   // \"abc\" — always sorted!\nfor (auto& [k,v] : um) std::cout &lt;&lt; k;   // any order — no guarantee</pre><table-like><pre>                 map (RB-tree)      unordered_map (hash)\nlookup/insert    O(log n) GUARANTEED  O(1) avg, O(n) worst\niteration order  sorted by key        unspecified\nmemory           node ptrs per entry  bucket array + chains</pre><p>When to pick <code>map</code>: you need sorted iteration, or <b>predictable worst-case latency</b> — a hash table's occasional rehash or collision pile-up is a latency spike, and in HFT tail latency often matters more than average speed. That framing is the interview gold.</p><p><b>kth smallest key?</b> From a <code>map</code>: iterate k steps — the tree is already sorted, O(k). From an <code>unordered_map</code>: it was <i>never</i> sorted — extract all keys, sort, index: O(n log n). Structure determines cost.</p><h3>Part B: implement deque — the segmented-array trick</h3><p>Requirement (verbatim from your PDF): O(1) push/pop at <i>both</i> ends, plus random access. A single array can't (front-push shifts everything). A linked list can't (no O(1) indexing). The answer is neither:</p><pre>map (small array of chunk pointers):\n[ chunk0* ][ chunk1* ][ chunk2* ]\n     ↓          ↓          ↓\n  [_,_,a,b]  [c,d,e,f]  [g,h,_,_]     ← fixed-size chunks (say 4)\n   front→                  ←back</pre><p><b>push_back</b>: write into the back chunk's next free slot; if full, allocate a fresh chunk and append its pointer to the map. Nothing ever shifts → O(1). <b>push_front</b>: symmetric at the front. <b>Random access</b> is two array lookups:</p><pre>T& operator[](size_t i) {\n    size_t j = i + frontOffset_;          // account for front slack\n    return *(chunks_[j / CHUNK_SIZE]       // which chunk\n              + (j % CHUNK_SIZE));         // where in it\n}</pre><p>Division + modulo — no traversal, O(1). The tradeoff vs vector: elements aren't one contiguous block, so sequential scans hop between chunks — worse cache behavior (Lesson 22). Use deque only when you truly need both ends.</p><p><b>Try it:</b> implement a minimal int-deque: <code>std::vector&lt;int*&gt;</code> of 4-element chunks supporting <code>push_back</code> and <code>operator[]</code>. Then explain aloud why a linked list can never satisfy the random-access requirement — that contrast is the expected answer's core.</p>",
+keyPoints:["map: RB-tree, O(log n) guaranteed, sorted. unordered_map: hash, O(1) avg.","Predictable worst-case latency can favor map in HFT contexts.","deque = fixed chunks + pointer map; O(1) both ends AND random access.","deque is NOT a linked list — linked lists can't do O(1) random access."]},
+
+{id:12,week:4,weekTheme:"STL + language",topic:"Pointers & Language",title:"Templates, inline & const",
+teaser:"Compile-time code generation and two classic trap questions.",
+body:"<p>Templates are how C++ writes code that works for any type <i>without</i> runtime cost. After this lesson you will write your own — not just recognize them.</p><h3>Function templates, from zero</h3><p>You want <code>max</code> for ints, doubles, strings. Without templates you'd copy-paste three functions. Instead:</p><pre>template &lt;typename T&gt;      // \"for any type, call it T...\"\nT myMax(T a, T b) {         // a function taking two T's, returning T\n    return a &gt; b ? a : b;\n}\n\nmyMax(3, 5);        // compiler GENERATES int myMax(int, int)\nmyMax(2.5, 1.0);    // compiler GENERATES double myMax(double, double)\nmyMax&lt;double&gt;(3, 5.0);  // explicit T when deduction is ambiguous</pre><p>Key mental model: a template is a <b>blueprint</b>, not a function. Each distinct T stamps out a real, fully-typed function at <i>compile time</i> — this is why templates have zero runtime overhead, and it's the \"zero-cost abstraction\" story interviewers want (Lesson 23).</p><h3>Class templates — you've been using them all along</h3><p><code>std::vector&lt;int&gt;</code> is a class template instantiation. Write your own:</p><pre>template &lt;typename T&gt;\nclass Box {\npublic:\n    Box(T value) : value_(value) {}\n    T get() const { return value_; }     // const = doesn't modify the Box\nprivate:\n    T value_;\n};\n\nBox&lt;int&gt; b1(42);\nBox&lt;std::string&gt; b2(\"hello\");   // two completely separate generated classes</pre><p>Multiple parameters work as you'd guess: <code>template &lt;typename K, typename V&gt; class Pair { K key; V value; };</code></p><h3>The rule that surprises everyone</h3><p>Template definitions must live in <b>header files</b>. Why: the compiler can only stamp out <code>myMax&lt;YourType&gt;</code> if it can <i>see the full definition</i> at the call site. A definition hidden in a separate .cpp isn't visible → linker error (<code>undefined reference</code>). When you hit that error with templates, this is why.</p><p>Costs worth naming in interviews: per-type code generation bloats binaries and slows compiles; error messages are notoriously long (C++20 concepts improve this by constraining T up front).</p><h3>inline — the trap question</h3><p>Historically \"paste the body at the call site\" (kills call overhead). The trap: in modern C++, <code>inline</code>'s <i>guaranteed</i> effect is linkage — allowing identical definitions across translation units. Actual inlining is the compiler's own decision, keyword or not. Why does inlining help at all? A call is a jump: pipeline disruption, branch prediction, saved registers. Inlined code is straight-line and optimizable across the boundary. Over-inlining backfires via instruction-cache bloat — say that too.</p><h3>const pointer decoder (read right-to-left)</h3><pre>const char* p;        // pointer to const char  — *p immutable, p movable\nchar* const p;        // const pointer to char  — p fixed, *p mutable\nconst char* const p;  // both locked</pre><p><b>Try it:</b> write templated <code>myMax</code>, call it with ints, doubles, and strings. Then write <code>template&lt;typename T&gt; T sum(const std::vector&lt;T&gt;& v)</code> that loops and adds. Compile with <code>g++ -S</code> after calling it with two types, and find both generated functions in the assembly — proof the blueprint stamped twice.</p>",
+keyPoints:["Templates generate per-type code at compile time → must live in headers.","`inline`'s guaranteed modern effect is linkage, not forced inlining.","Calls cost pipeline/branch-prediction disruption vs straight-line inlined code.","Read pointer const right-to-left from the identifier."]},
+
+{id:13,week:5,weekTheme:"Operating systems",topic:"OS & Virtual Memory",title:"Virtual Memory, Paging & the TLB",
+teaser:"The hotel-front-desk trick that makes process isolation possible.",
+body:"<p>This cluster — virtual memory, page tables, TLB — is HRT's favorite territory, and it's where Python-only backgrounds feel shakiest. Take it slowly; it's one idea applied three times.</p><h3>The one idea: addresses are lies (useful ones)</h3><p>When your program uses address <code>0x1000</code>, that is a <b>virtual</b> address — a fiction private to your process. Hardware (the MMU) translates it to a real physical RAM address on every access, using a per-process lookup structure called the <b>page table</b>.</p><pre>Process A                    Process B\nvirtual 0x1000 ──→ physical frame 5\n                    virtual 0x1000 ──→ physical frame 9\n\nSame virtual address, different physical memory.\nNeither process can even NAME the other's memory. That's isolation.</pre><h3>Page tables, concretely</h3><p>Memory is managed in <b>pages</b> (typically 4KB). A virtual address splits into [page number | offset]; the page table maps page number → physical frame number; the offset carries over:</p><pre>virtual:  [ page# 0x42 | offset 0x1A3 ]\n                 │\n           page table: 0x42 → frame 0x7\n                 │\nphysical: [ frame 0x7 | offset 0x1A3 ]</pre><p>(Real page tables are multi-level trees to stay compact, but this is the model to hold.)</p><h3>The 8GB-on-4GB question</h3><p>Allocating 8GB of <i>virtual</i> space on a 4GB-RAM machine usually succeeds — virtual space is a promise of addressability, not physical backing. Pages get physical frames only on first touch (<b>demand paging</b>). If RAM fills, the OS evicts cold pages to disk (<b>swap</b>) and reloads them if touched again — that's the \"everything got slow\" swap experience.</p><h3>Page fault vs segfault — don't conflate</h3><pre>Access unmapped-but-valid page → PAGE FAULT → OS loads it, resumes.\n                                  Normal! Happens constantly.\nAccess invalid address (null,   → PAGE FAULT the OS can't satisfy\n write to read-only memory)       → SIGSEGV → crash. THAT's a segfault.</pre><p>A segfault is just a page fault with no legitimate resolution. Now you can also answer \"what happens during a segfault, and how would you implement it\" — the MMU raises a fault, the OS checks its mappings, finds the access invalid, delivers SIGSEGV.</p><h3>The TLB</h3><p>Page-table walks cost extra memory accesses — doing one per load/store would be brutal. The <b>TLB</b> is a tiny, very fast hardware cache of recent translations. Hit: translation is free. Miss: walk the tree. \"How do you increase TLB hit rate?\" — two levers:</p><pre>1. LOCALITY: touch nearby addresses (vector scans reuse the same\n   page's cached translation; scattered pointer-chasing doesn't).\n2. HUGE PAGES: 2MB pages instead of 4KB — each TLB entry covers\n   512x the memory. Real HFT systems configure this deliberately.</pre><p><b>Try it:</b> write a program that dereferences <code>nullptr</code> and run it — read the \"Segmentation fault\" message knowing exactly which chain of events produced it. Then explain aloud, from memory, why two processes can both use 0x1000. If you can teach it, you own it.</p>",
+keyPoints:["Page tables map virtual pages → physical frames, per process.","Page fault = often normal (demand paging); segfault = invalid access escalated.","8GB request on 4GB RAM works via demand paging + swap.","TLB hit rate: improve locality, use huge pages."]},
+
+{id:14,week:5,weekTheme:"Operating systems",topic:"OS & Virtual Memory",title:"Processes, Threads & Context Switching",
+teaser:"The office-and-employees model, plus IPC and why switches cost.",
+body:"<p>\"Process vs thread\" opens half of these interviews. Get the picture right and every follow-up (IPC, context switches, why threads race) falls out of it.</p><h3>The picture</h3><pre>PROCESS (own private virtual address space)\n+--------------------------------------------+\n|  Code    |  Globals  |  HEAP (shared by     |\n|          |           |  ALL threads)        |\n|                                              |\n|  Thread 1:  own stack, own registers         |\n|  Thread 2:  own stack, own registers         |\n+--------------------------------------------+</pre><p>A <b>process</b> is the isolated container. <b>Threads</b> are execution streams inside it: they share the heap, globals, and code — each has only a private stack and register state. Two consequences you must be able to derive: (1) threads communicate by just reading/writing shared memory — fast, and dangerous (races, Lesson 17); (2) processes <i>can't</i> touch each other's memory, so they need explicit <b>IPC</b>.</p><h3>Write a thread right now</h3><pre>#include &lt;thread&gt;\n#include &lt;iostream&gt;\n\nvoid work(int id) { std::cout &lt;&lt; \"thread \" &lt;&lt; id &lt;&lt; \"\\n\"; }\n\nint main() {\n    std::thread t1(work, 1);   // starts running immediately\n    std::thread t2(work, 2);\n    t1.join();   // wait for it to finish — forgetting join = crash\n    t2.join();\n}\n// compile with:  g++ -Wall threads.cpp -pthread</pre><h3>IPC — know the list plus one line each</h3><pre>pipes          one-way byte stream (shell's |), related processes\nshared memory  same physical pages mapped into both — fastest, DIY sync\nsockets        general, works across machines (Lessons 15-16)\nsignals        async pokes (SIGKILL, SIGSEGV) — no data payload\nmessage queues OS-managed discrete messages</pre><h3>\"How does a computer do many things at once?\"</h3><p>Two mechanisms, often conflated — separating them cleanly is the strong answer:</p><p><b>Concurrency</b>: the scheduler time-slices one core, swapping threads every few ms via <b>context switches</b> — save this thread's registers/program counter/stack pointer, load another's. Fast switching creates the illusion of simultaneity on even one core.</p><p><b>Parallelism</b>: multiple cores literally executing at the same instant. Requires actual hardware.</p><h3>Why process switches cost more than thread switches</h3><p>Both save/restore registers. But switching <i>processes</i> means switching address spaces: new page table, TLB flush (Lesson 13!), cold caches. Threads share their process's page table — nothing to flush. That connection — \"threads share the page table, so their switches skip the TLB pain\" — links two lessons in one sentence and lands very well in interviews.</p><p><b>Try it:</b> run the thread example. Then make both threads increment a shared global <code>int counter</code> 1,000,000 times each with no protection, print the result — it won't be 2,000,000. You've just produced a real race condition; Lesson 17 explains exactly what happened.</p>",
+keyPoints:["Threads share heap/globals/code; own stack + registers.","IPC: pipes, shared memory, sockets, signals, message queues.","Concurrency = interleaving (1 core ok); parallelism = simultaneous (needs cores).","Process switch > thread switch cost: page table + TLB + caches."]},
+
+{id:15,week:6,weekTheme:"Networking",topic:"Networking",title:"TCP vs UDP",
+teaser:"Reliability machinery vs raw speed — and why trading uses both.",
+body:"<p>You flagged TCP vs UDP as a weak spot — so let's build it from what the network actually gives you, which is almost nothing.</p><h3>The starting point: networks lose things</h3><p>IP, the underlying layer, makes exactly one promise: \"I'll try to get this packet there.\" Packets can be dropped, duplicated, or arrive out of order. TCP and UDP are two answers to that reality.</p><h3>UDP: accept the chaos</h3><p>UDP adds almost nothing to IP: just port numbers (which app gets it) and a checksum. Send a datagram, hope. No connection, no confirmation, no ordering, no retry. What you get in exchange: <b>minimal latency and overhead</b>. Loss handling becomes your application's job.</p><h3>TCP: engineer reliability on top</h3><p>Four mechanisms — know each by name and purpose:</p><p><b>1. Connection setup</b> — the three-way handshake before any data:</p><pre>Client            Server\n  ── SYN ──────────→        \"want to talk, my seq# is X\"\n  ←─ SYN-ACK ───────        \"ok, mine is Y, I heard X\"\n  ── ACK ──────────→        \"heard Y\" — connected.</pre><p><b>2. Reliability + ordering</b> — every byte is numbered:</p><pre>  ── data seq=1 ────→\n  ←─ ACK 1 ──────────\n  ── data seq=2 ────→   ✗ lost in the network\n     (timeout, no ACK)\n  ── data seq=2 ────→   retransmit until ACKed\n  ←─ ACK 2 ──────────\nOut-of-order arrivals are buffered and re-sequenced\nbefore your app sees them.</pre><p><b>3. Flow control</b> — protects the <i>receiver</i>: each ACK advertises how much buffer space the receiver has left (the window); the sender never exceeds it. A fast sender can't drown a slow receiver.</p><p><b>4. Congestion control</b> — protects the <i>network</i>: the sender watches for loss and rising round-trip times (congestion symptoms) and throttles itself (slow start, congestion avoidance). Flow control = receiver-driven; congestion control = sender-inferred. Interviewers ask these as separate questions specifically to catch people conflating them.</p><h3>Why trading firms care — use both, deliberately</h3><p><b>Market data → UDP multicast.</b> Multicast = one packet, replicated by the network to every subscriber — impossible with TCP's per-connection point-to-point model at exchange scale (thousands of subscribers). And TCP's retransmission would <i>block newer data behind a retransmit of stale data</i> (head-of-line blocking); for a price feed, skipping a lost tick and reading the next one is better. Apps detect gaps via sequence numbers and request snapshots.</p><p><b>Order entry → TCP</b> (or a reliable protocol built on UDP). You cannot silently lose an order. Reliability is worth the latency here.</p><p><b>Try it:</b> from memory, draw the handshake and the lost-packet retransmission diagrams. Then answer aloud: \"why would an engineer deliberately choose the unreliable protocol?\" If your answer includes fan-out and head-of-line blocking, you're at interview depth.</p>",
+keyPoints:["TCP reliability = sequence numbers + ACKs + retransmission + reordering.","Flow control protects the receiver; congestion control protects the network.","Multicast = one-to-many on UDP; TCP's point-to-point model can't fan out.","Market data → UDP multicast; order entry → reliable protocols."]},
+
+{id:16,week:6,weekTheme:"Networking",topic:"Networking",title:"Sockets & traceroute",
+teaser:"The TTL trick — routers telling on themselves.",
+body:"<p>How does your C++ actually touch the network? Through <b>sockets</b> — and understanding them also unlocks the delightfully sneaky <code>traceroute</code> question from your notes.</p><h3>Sockets: network I/O as file descriptors</h3><p>On Linux, a socket IS a file descriptor — the same kind of handle as an open file. You ask the kernel for one, then read/write through it; the kernel's network stack does the rest (TCP/UDP → IP → Ethernet → wire).</p><pre>#include &lt;sys/socket.h&gt;\n#include &lt;netinet/in.h&gt;\n#include &lt;arpa/inet.h&gt;\n\nint sock = socket(AF_INET, SOCK_DGRAM, 0);\n//                 IPv4     UDP  (SOCK_STREAM would be TCP)\n\nsockaddr_in addr{};\naddr.sin_family = AF_INET;\naddr.sin_port   = htons(9000);            // ← note htons!\ninet_pton(AF_INET, \"127.0.0.1\", &addr.sin_addr);\n\nsendto(sock, \"hi\", 2, 0, (sockaddr*)&addr, sizeof(addr));</pre><p><b>Why <code>htons</code>?</b> Network protocols define multi-byte fields as big-endian (\"network byte order\"); your x86 CPU is little-endian (Lesson 2!). <code>htons</code>/<code>ntohl</code> convert host↔network order. Connecting this to the endianness lesson in an interview shows you're building a model, not memorizing facts.</p><p>You won't be asked to write full socket servers live — but recognizing <code>SOCK_STREAM</code> vs <code>SOCK_DGRAM</code> and the byte-order calls signals real familiarity.</p><h3>traceroute: the TTL trick</h3><p>\"How is traceroute implemented?\" is a great question because the answer is a clever abuse of a safety feature.</p><p>The setup: every IP packet has a <b>TTL</b> (time-to-live) field. Each router that forwards the packet decrements it; at 0, the router <i>drops the packet and sends back an ICMP \"Time Exceeded\" message — signed, effectively, with its own address</i>. (TTL exists to keep lost packets from looping forever.)</p><p>The exploit: send packets with deliberately tiny TTLs.</p><pre>send TTL=1 → dies at router 1 → router 1 replies  → hop 1 identified\nsend TTL=2 → passes router 1, dies at router 2    → hop 2 identified\nsend TTL=3 → dies at router 3                      → hop 3 identified\n...\nsend TTL=n → actually REACHES the destination      → done, path mapped</pre><p>Each hop in traceroute's output is one router incriminating itself via TTL expiry. Bonus intuition: hop 1 always shows the lowest latency — it's your own gateway, one decrement away.</p><p><b>Try it:</b> run <code>traceroute 8.8.8.8</code> (macOS/Linux) and read each line knowing exactly what produced it. Then explain the mechanism aloud in under 60 seconds — it's a question where a crisp answer visibly separates candidates.</p>",
+keyPoints:["Sockets are file descriptors backed by the network stack.","`htons`/`ntohl` = host ↔ network byte order (endianness in practice).","traceroute = incrementing TTL + ICMP Time Exceeded replies.","First hop replies fastest — it's one TTL decrement away."]},
+
+{id:17,week:7,weekTheme:"Concurrency",topic:"Concurrency",title:"Race Conditions & Mutexes",
+teaser:"Why counter++ is three instructions and how locks fix it.",
+body:"<p>In Lesson 14's exercise, your two-thread counter came out wrong. Here's exactly why, and every tool for fixing it.</p><h3>The autopsy: counter++ is three instructions</h3><pre>counter++;   // looks atomic. Compiles to:\n// 1. LOAD  counter into a register\n// 2. ADD   1 to the register\n// 3. STORE the register back\n\nThread A: LOAD (reads 0)\nThread B: LOAD (reads 0)      ← both hold stale 0\nThread A: ADD, STORE → counter = 1\nThread B: ADD, STORE → counter = 1   ← A's increment ERASED</pre><p>Two increments, result 1. That's a <b>race condition</b>: correctness depends on which interleaving the scheduler happens to produce — different every run, worst kind of bug to reproduce.</p><h3>Fix 1: mutex — one thread at a time</h3><pre>#include &lt;mutex&gt;\n\nstd::mutex m;\nint counter = 0;\n\nvoid increment() {\n    std::lock_guard&lt;std::mutex&gt; lock(m);  // acquires m; blocks others\n    counter++;                              // safe: exclusive access\n}   // lock released HERE by lock_guard's destructor — RAII again!</pre><p>Why <code>lock_guard</code> instead of manual <code>m.lock()/m.unlock()</code>: if the code between lock and unlock throws or returns early, manual unlock never runs and every other thread blocks forever. <code>lock_guard</code> is Lesson 6's RAII applied to locking — the destructor guarantees release on every path.</p><p><code>unique_lock</code> is its flexible sibling: supports deferred locking, manual unlock/relock — and is <i>required</i> by condition variables, which must unlock while sleeping.</p><h3>Condition variables: sleep until there's work</h3><pre>std::condition_variable cv;\nstd::mutex m;\nbool ready = false;\n\n// Waiting thread — sleeps, no CPU burned:\nstd::unique_lock&lt;std::mutex&gt; lock(m);\ncv.wait(lock, []{ return ready; });   // unlocks + sleeps; on notify,\n                                        // relocks and rechecks ready\n\n// Notifying thread:\n{ std::lock_guard&lt;std::mutex&gt; lock(m); ready = true; }\ncv.notify_one();</pre><p>Without this you'd busy-wait (<code>while(!ready){}</code>) — burning a full core polling. Condition variables are the building block of the thread pool in Lesson 19.</p><h3>Deadlock: the other classic</h3><pre>Thread A: lock(m1); ... wants m2\nThread B: lock(m2); ... wants m1     ← both wait forever</pre><p>Circular waiting. The standard fix: every thread acquires multiple locks in the <b>same global order</b> (always m1 before m2) — cycles become impossible. Or <code>std::scoped_lock lock(m1, m2);</code> which acquires both atomically with deadlock avoidance built in.</p><p><b>Try it:</b> take your broken counter from Lesson 14 and fix it three ways over the next two lessons: (1) mutex + lock_guard now — verify 2,000,000 exactly; (2) deliberately construct the two-mutex deadlock and watch it hang; (3) fix the deadlock via lock ordering. Atomics (fix #3's cousin) are next lesson.</p>",
+keyPoints:["`counter++` = 3 machine steps; interleaving loses updates.","`lock_guard` is RAII for locking — exception-safe unlock.","`unique_lock` for condition variables and manual control.","Deadlock fix: consistent global lock ordering."]},
+
+{id:18,week:7,weekTheme:"Concurrency",topic:"Concurrency",title:"Atomics, CAS & volatile",
+teaser:"Hardware-indivisible ops and the volatile trap.",
+body:"<p>Mutexes work, but a blocked thread means a context switch — microseconds of latency. HFT hot paths often use <b>atomics</b> instead: hardware-level indivisible operations. This is Citadel-interview bread and butter.</p><h3>The third fix for the broken counter</h3><pre>#include &lt;atomic&gt;\n\nstd::atomic&lt;int&gt; counter{0};\n\nvoid increment() {\n    counter++;        // now GENUINELY atomic — no mutex needed\n}\n// Two threads × 1M increments → exactly 2,000,000. Always.</pre><p>How? <code>counter++</code> on an atomic compiles to a special CPU instruction (x86: <code>LOCK XADD</code>) that performs load-add-store as <b>one indivisible hardware step</b>. No other core can observe or interleave with it mid-flight. No lock, no blocking, no context switch.</p><h3>The atomic toolkit</h3><pre>std::atomic&lt;int&gt; x{0};\nx.store(5);                  // atomic write\nint v = x.load();            // atomic read\nint old = x.fetch_add(3);    // atomic +=, returns the OLD value\nint prev = x.exchange(9);    // atomic swap-in, returns old</pre><h3>CAS: the building block of lock-free code</h3><p><b>Compare-And-Swap</b> — the operation everything fancier is built from:</p><pre>std::atomic&lt;int&gt; value{5};\nint expected = 5;\nbool ok = value.compare_exchange_strong(expected, 10);\n// Atomically: \"IF value still == expected (5), set it to 10, return true.\n//              ELSE: put the actual current value into expected,\n//                    return false — so I can retry.\"</pre><p>The lock-free pattern is an optimistic retry loop:</p><pre>// atomically double a counter, lock-free:\nint cur = value.load();\nwhile (!value.compare_exchange_strong(cur, cur * 2)) {\n    // CAS failed → another thread changed value; cur now holds\n    // the fresh value — loop and try again with it\n}</pre><p>No thread ever <i>blocks</i> — a losing thread just retries. \"Lock-free\" is that formal progress guarantee (someone always makes progress), not \"no waiting ever\": under heavy contention, retry loops still spin.</p><h3>The trap question: volatile</h3><pre>volatile int flag;   // ✗ NOT thread-safe. At all.</pre><p><code>volatile</code> only tells the <i>compiler</i> \"don't optimize away or reorder accesses to this\" — it exists for memory-mapped hardware registers. It provides zero atomicity and zero cross-thread ordering. Java's volatile <i>does</i> have sync semantics, which is why interviewers love this trap on people with mixed backgrounds. In C++: threads → <code>std::atomic</code>, hardware registers → <code>volatile</code>. Full stop.</p><h3>Memory ordering — know it exists</h3><p>CPUs and compilers reorder instructions for speed; other threads can observe those reorderings. <code>std::atomic</code> defaults to <code>seq_cst</code> — one global order all threads agree on, the safe choice. Relaxed orderings (<code>acquire</code>/<code>release</code>/<code>relaxed</code>) buy hot-path performance at the cost of subtle reasoning — for interviews, naming the default and why it's sane is usually enough.</p><p><b>Try it:</b> fix the Lesson 14 counter with <code>std::atomic&lt;int&gt;</code> and verify exactness. Then write the CAS doubling loop and reason through: what happens if two threads run it simultaneously? Trace both interleavings — one CAS fails and retries, and the final result is correct either way. That trace IS lock-free thinking.</p>",
+keyPoints:["Atomics = hardware-indivisible ops; no other thread sees them half-done.","CAS + retry loop = optimistic, lock-free updates.","`volatile` provides ZERO thread safety — classic trap.","Default `seq_cst` ordering is the sane, strict choice."]},
+
+{id:19,week:8,weekTheme:"Concurrency applied",topic:"Concurrency",title:"Thread Pools & Timed Schedulers",
+teaser:"The scenario question: callbacks after T ms, with cancel.",
+body:"<p>Your InterviewDB scenario question, verbatim: \"Implement a scheduler: given time T, trigger a callback after T milliseconds. Implement cancel. What are the performance concerns of a multithreaded solution?\" This lesson assembles it from Lessons 14, 17, and 18.</p><h3>Step 1: a thread pool (the foundation)</h3><p>Spawning a fresh OS thread per task is expensive. A pool starts N workers once; they loop pulling tasks from a shared queue:</p><pre>class ThreadPool {\n    std::vector&lt;std::thread&gt; workers_;\n    std::queue&lt;std::function&lt;void()&gt;&gt; tasks_;\n    std::mutex m_;\n    std::condition_variable cv_;\n    bool stop_ = false;\n\n    void workerLoop() {\n        while (true) {\n            std::function&lt;void()&gt; task;\n            {\n                std::unique_lock&lt;std::mutex&gt; lock(m_);\n                cv_.wait(lock, [this]{ return stop_ || !tasks_.empty(); });\n                if (stop_ && tasks_.empty()) return;\n                task = std::move(tasks_.front());\n                tasks_.pop();\n            }             // ← lock released HERE, before running\n            task();       // run OUTSIDE the lock — critical!\n        }\n    }\npublic:\n    ThreadPool(size_t n) {\n        for (size_t i = 0; i &lt; n; ++i)\n            workers_.emplace_back([this]{ workerLoop(); });\n    }\n    void enqueue(std::function&lt;void()&gt; t) {\n        { std::lock_guard&lt;std::mutex&gt; lock(m_); tasks_.push(std::move(t)); }\n        cv_.notify_one();\n    }\n};</pre><p>The one rule interviewers watch for: <b>run the task outside the lock</b>. Hold it during execution and every other worker blocks for the task's whole duration.</p><h3>Step 2: add timing — a min-heap by trigger time</h3><pre>struct ScheduledTask {\n    std::chrono::steady_clock::time_point when;\n    std::function&lt;void()&gt; callback;\n    std::shared_ptr&lt;std::atomic&lt;bool&gt;&gt; cancelled;\n    bool operator&gt;(const ScheduledTask& o) const { return when &gt; o.when; }\n};\nstd::priority_queue&lt;ScheduledTask, std::vector&lt;ScheduledTask&gt;,\n                    std::greater&lt;&gt;&gt; heap_;   // min-heap: soonest on top</pre><p>A dedicated scheduler thread: sleep until the top task's time (wake early if a sooner task arrives — condition variable again), pop ready tasks, hand them to the pool. The scheduler thread <b>never runs callbacks itself</b> — one slow callback would delay every subsequent task.</p><h3>Step 3: cancel — the elegant dodge</h3><p>A heap can't efficiently remove from the middle. So don't:</p><pre>auto flag = std::make_shared&lt;std::atomic&lt;bool&gt;&gt;(false);\nschedule(when, callback, flag);   // store flag with the task\n// cancel() is just:\n*flag = true;                      // O(1), no heap surgery\n// scheduler, before firing:  if (*task.cancelled) skip;</pre><p><b>Lazy cancellation</b>: mark it dead, skip it when it surfaces. This pattern appears all over real systems.</p><h3>Step 4: the performance-concerns half (where candidates stop too early)</h3><pre>1. LOCK CONTENTION: every enqueue/dequeue fights for one mutex.\n   → shard into per-worker queues, or a lock-free queue (L18).\n2. WAKE-UP JITTER: OS wake-ups aren't instant (µs-ms variance).\n   → for sub-ms precision, busy-poll a pinned core — deliberate\n     CPU-for-latency trade, standard in HFT.\n3. DEAD ENTRIES: cancelled tasks linger in the heap until due.\n   → periodic compaction if cancellation is heavy.\n4. SLOW CALLBACKS: never on the scheduler thread (see step 2).</pre><p><b>Try it:</b> build the ThreadPool and push 100 print-tasks through it. Then add the timed heap and schedule callbacks at staggered delays with one cancelled mid-flight. This is the single most complete \"build something real\" exercise in the course — budget a weekend session for it.</p>",
+keyPoints:["Pool = shared queue + condvar; run tasks outside the lock.","Scheduler = min-heap by time; dispatch to pool, never execute inline.","Cancellation = lazy flag-and-skip, not heap surgery.","Concerns: lock contention, wake-up latency, one consistent answer for each."]},
+
+{id:20,week:8,weekTheme:"Concurrency applied",topic:"Performance",title:"External Sort & K-Way Merge",
+teaser:"N sorted files, none fits in memory. Merge them.",
+body:"<p>Scenario question from your PDF: \"N sorted log files, no single file fits in memory. Merge them into one sorted file.\" The trap is the memory constraint; the escape is realizing how little you actually need in RAM.</p><h3>The insight</h3><p>The next element of the merged output is always the smallest among the N files' <i>current front elements</i>. You never need anything else in memory — just N values, one per file.</p><h3>Walk through it</h3><pre>File A: 1, 5, 9, 20      File B: 2, 3, 8      File C: 4, 6, 7\n\nmin-heap (one entry per file): [1(A), 2(B), 4(C)]\n\npop 1 → write to output → refill from A → [2(B), 4(C), 5(A)]\npop 2 → write            → refill from B → [3(B), 4(C), 5(A)]\npop 3 → write            → refill from B → [4(C), 5(A), 8(B)]\npop 4 → write            → refill from C → ...\n\nOutput: 1, 2, 3, 4, ...   Memory used: THREE values. Ever.</pre><p>The refill rule is the crux: after popping the min, read the next element <b>from the same file the min came from</b> — the heap must always hold every file's current front.</p><h3>The code</h3><pre>#include &lt;queue&gt;\n#include &lt;fstream&gt;\n#include &lt;vector&gt;\n\nstruct Entry {\n    int value; int file;\n    bool operator&gt;(const Entry& o) const { return value &gt; o.value; }\n};\n\nvoid mergeK(std::vector&lt;std::ifstream&gt;& files, std::ofstream& out) {\n    std::priority_queue&lt;Entry, std::vector&lt;Entry&gt;,\n                        std::greater&lt;&gt;&gt; heap;   // min-heap\n    for (int i = 0; i &lt; (int)files.size(); ++i) {   // prime: one per file\n        int v;\n        if (files[i] &gt;&gt; v) heap.push({v, i});\n    }\n    while (!heap.empty()) {\n        auto [value, idx] = heap.top(); heap.pop();\n        out &lt;&lt; value &lt;&lt; \"\\n\";\n        int next;\n        if (files[idx] &gt;&gt; next) heap.push({next, idx});  // SAME file\n    }\n}</pre><h3>Complexity — say it precisely</h3><pre>Memory: O(N)               — N buffered values + heap of N. NOT data size.\nTime:   O(total × log N)   — each element: one push + one pop, O(log N)\n                              (heap has N entries, not 'total')</pre><h3>The follow-up: data not sorted at all?</h3><p>Full <b>external sort</b> (100GB file, 8GB RAM): (1) <b>split</b> — read 8GB chunks, sort each in memory, write each out as a sorted \"run\"; (2) <b>merge</b> — k-way merge the runs with the heap above. This two-phase pattern is the backbone of every big-data sort (MapReduce shuffle included) — naming that connection is a nice flourish.</p><p><b>Try it:</b> create 3 small sorted text files and implement mergeK. Verify against <code>sort -nm a.txt b.txt c.txt</code>. Then say aloud, from memory: why is memory O(N) and not O(total)? That sentence is the interview answer.</p>",
+keyPoints:["Min-heap of size N (files), never total data size.","Pop min → write → refill from the same file.","O(total × log N) time, O(N) memory.","Unsorted data: chunk-sort-spill, then merge the runs."]},
+
+{id:21,week:9,weekTheme:"Low-latency C++",topic:"Memory",title:"Defragmentation & Custom Allocators",
+teaser:"memmove vs memcpy, arenas, and pools.",
+body:"<p>Your PDF contains this exact signature: <code>size_t defragment(std::vector&lt;T*&gt;& objects, void* bufBegin);</code> — a real senior-level question combining Lessons 3, 5, and memory layout. Let's build it, then meet the allocators that make it unnecessary.</p><h3>The problem: fragmentation</h3><pre>After lots of alloc/free churn:\n+------+------+------+------+------+------+\n| obj0 | FREE | obj1 | FREE | obj2 | FREE |\n+------+------+------+------+------+------+\nPlenty of TOTAL free space — but scattered. A large\nallocation fails even though the bytes exist.</pre><p>Defragmenting = sliding live objects together so free space consolidates:</p><pre>+------+------+------+---------------------+\n| obj0 | obj1 | obj2 |        FREE          |\n+------+------+------+---------------------+</pre><h3>The implementation</h3><pre>template &lt;class T&gt;\nsize_t defragment(std::vector&lt;T*&gt;& objects, void* bufBegin) {\n    T* buffer = static_cast&lt;T*&gt;(bufBegin);\n    for (size_t i = 0; i &lt; objects.size(); ++i) {\n        T* target = buffer + i;          // packed position for object i\n        if (objects[i] != target) {\n            std::memmove(target, objects[i], sizeof(T));  // ← memMOVE\n            objects[i] = target;          // update the tracking pointer\n        }\n    }\n    return objects.size() * sizeof(T);    // bytes now contiguous\n}</pre><p>Three test points hidden inside: <b>(1) memmove, not memcpy</b> — we're sliding objects within one buffer, so source and destination can overlap; memcpy on overlap is UB, memmove picks a safe copy direction. <b>(2) Update the pointers</b> — the vector must track the new locations. <b>(3) The caveat to volunteer</b>: raw-byte relocation is only safe for <i>trivially copyable</i> types. A <code>std::string</code> member (with SSO internals, Lesson 9) would break — for general T you'd placement-new a moved copy at the target and destroy the original. Volunteering that unprompted is the senior signal.</p><h3>The better idea: don't fragment in the first place</h3><p><b>Arena (bump) allocator</b> — allocation is one pointer addition:</p><pre>class Arena {\n    char* buf_; size_t size_, offset_ = 0;\npublic:\n    Arena(size_t n) : buf_(new char[n]), size_(n) {}\n    void* allocate(size_t n) {\n        if (offset_ + n &gt; size_) return nullptr;\n        void* p = buf_ + offset_;\n        offset_ += n;                  // \"allocation\" = this line\n        return p;\n    }\n    void reset() { offset_ = 0; }      // free EVERYTHING at once\n    ~Arena() { delete[] buf_; }\n};</pre><p>Nanosecond allocation, zero fragmentation, zero per-object bookkeeping. The constraint: no individual frees — the whole arena resets together. Perfect when lifetimes group naturally: \"all scratch objects for processing this one market-data event, freed when the event completes.\"</p><p><b>Object pool</b>: pre-allocate N same-size slots + a free list of empties. Alloc = pop a slot, free = push it back — O(1) both ways, fragmentation impossible. The other workhorse of low-latency C++.</p><p><b>Try it:</b> implement defragment and test with ints scattered through a manually-managed buffer. Then build Arena and allocate a few objects from it via placement new (Lesson 5 — see how it all connects?). Finally, answer aloud: why does the general-purpose allocator HAVE to be slower than these? (It handles arbitrary sizes, arbitrary lifetimes, and thread safety — generality costs.)</p>",
+keyPoints:["`memmove` handles overlap; `memcpy` on overlap is UB.","Raw-byte relocation only valid for trivially copyable types.","Arena: pointer-bump alloc, bulk free — for grouped lifetimes.","Pool: fixed-size slots + free list — no fragmentation, fixed capacity."]},
+
+{id:22,week:9,weekTheme:"Low-latency C++",topic:"Performance",title:"CPU Caches & False Sharing",
+teaser:"Why identical Big-O can differ 100x — the HFT secret sauce.",
+body:"<p>This is the lesson that separates HFT interviews from normal ones. Big-O treats all memory accesses as equal. Hardware disagrees — by a factor of ~100.</p><h3>The hierarchy — internalize these magnitudes</h3><pre>registers   ~0 cycles     a handful of values\nL1 cache    ~4 cycles     ~32-64 KB\nL2 cache    ~12 cycles    ~256KB-1MB\nL3 cache    ~40 cycles    a few MB, shared across cores\nRAM         ~100-300 cycles\n\nA RAM access costs the CPU the chance to run HUNDREDS of\ninstructions. The cache hierarchy exists to hide that cliff.</pre><h3>Cache lines: memory moves in 64-byte chunks</h3><p>The CPU never fetches one byte — it fetches the whole 64-byte <b>cache line</b> containing it. Touch <code>v[0]</code> (an int) and <code>v[1]</code>..<code>v[15]</code> arrive too, for free:</p><pre>vector&lt;int&gt; (contiguous):\n[v0 v1 v2 ... v15][v16 ... v31] ...\n └─ one fetch, 16 elements ─┘     scans are ~free after fetch #1\n\nlist&lt;int&gt; (nodes scattered on the heap):\n[10]→ ...somewhere far... →[20]→ ...far... →[30]\n each step: pointer-chase → likely cache MISS → ~200 cycles</pre><p>Both traversals are \"O(n).\" The vector is often <b>10-100x faster</b>. When an interviewer asks \"vector or list, and why?\" — this, not Big-O, is the answer they're fishing for. (It also re-explains deque's tradeoff from Lesson 11 and the TLB-locality advice from Lesson 13 — same principle everywhere.)</p><h3>False sharing — the classic multithreaded performance trap</h3><p>Setup: two threads, each hammering its <i>own</i> counter. No shared data, no race. And yet it crawls:</p><pre>struct Counters {\n    std::atomic&lt;int&gt; a;   // thread A's counter ─┐ SAME 64-byte\n    std::atomic&lt;int&gt; b;   // thread B's counter ─┘ cache line!\n};</pre><p>Cache coherence works at line granularity: when core A writes <code>a</code>, every other core's copy of that <i>entire line</i> is invalidated — including core B's, which only cares about <code>b</code>. The two cores ping-pong the line back and forth on every write. No correctness bug. Brutal, silent throughput collapse.</p><pre>struct Fixed {\n    alignas(64) std::atomic&lt;int&gt; a;   // forced onto its own line\n    alignas(64) std::atomic&lt;int&gt; b;   // its own line too\n};   // threads now never touch each other's lines — problem gone</pre><p>Detection: Linux <code>perf c2c</code> surfaces cache-line contention; suspicion trigger is \"per-thread data that lives side by side in one struct/array.\"</p><p><b>Try it:</b> time summing 10M elements in a <code>vector&lt;int&gt;</code> vs a <code>list&lt;int&gt;</code> — measure the gap yourself. Then build both Counters versions above with two threads doing 10M increments each, and time them. Seeing false sharing cost you 2-5x on your own machine makes it unforgettable — and \"I measured it\" is a great interview sentence.</p>",
+keyPoints:["Cache lines are 64 bytes; locality makes sequential access ~free.","vector beats list on constant factors, not Big-O.","False sharing: unrelated per-thread data sharing a line = coherence storm.","Fix with `alignas(64)` padding; detect with `perf c2c`."]},
+
+{id:23,week:10,weekTheme:"Integration",topic:"Performance",title:"Company Patterns & C++'s Big Difference",
+teaser:"Where each firm leans, and the 'vs other languages' answer.",
+body:"<p>Week 10 begins: stop learning new material, start allocating review time strategically. Different firms lean on different parts of this course.</p><h3>Firm-by-firm leans (directional — verify per-desk on Glassdoor/Blind)</h3><p><b>Jane Street</b> — deep C++ mechanics with relentless \"why\" chains. One topic, five levels deep: why is emplace_back faster? → what does placement new do? → what alignment guarantees does operator new make? → implement vector's grow(). <i>Re-drill: Lessons 5, 7, 8.</i> Their style: a correct-but-shallow answer gets probed until you go deeper or hit bottom — so practice the second level of every answer.</p><p><b>HRT</b> — broad systems coverage, evenly weighted: cache behavior, TLB, virtual memory, networking, OS, concurrency. Your InterviewDB PDF reads like an HRT phone screen. <i>Re-drill: Lessons 13, 14, 15, 17, 22.</i></p><p><b>Citadel Securities</b> — atomics, lock-free thinking, latency-focused multithreading, TCP/UDP internals, memory layout. <i>Re-drill: Lessons 15, 17, 18, 19, 22, 24.</i></p><p><b>Jump</b> — Linux/kernel depth, CPU internals, networking down to the metal (their reputation: happily going a layer below everyone else). <i>Re-drill: Lessons 13, 14, 16, 22 — and be comfortable saying \"the kernel handles that; here's roughly how.\"</i></p><h3>The cross-cutting question: \"What's most different about C++?\"</h3><p>Asked at all of them in some form (\"vs Python?\" \"vs Java?\"). The weak answer is \"it's faster.\" The strong answer has two named pillars:</p><pre>1. DETERMINISTIC RESOURCE MANAGEMENT\n   RAII (L6): resources release at scope exit, at a knowable\n   moment. No garbage collector → no surprise pauses. A GC\n   pause mid-hot-path is an unbounded latency spike you\n   cannot schedule around — disqualifying for HFT.\n\n2. ZERO-COST ABSTRACTIONS\n   Templates (L12), inlining, vector — high-level code that\n   compiles to the same machine code you'd write by hand.\n   Python's abstractions cost interpreter overhead; C++'s\n   compile away.</pre><p>Then the Java-specific follow-up from your PDF — \"Java vs C++ garbage collection?\": Java's GC finds and frees unreachable objects automatically at runtime (convenient, pause-prone); C++ has none — lifetime is explicit via RAII/smart pointers (deterministic, and the programmer's responsibility). One sentence each, then the punchline: that determinism is <i>why</i> this industry pays for C++ engineers.</p><h3>Your week-10 drill routine</h3><pre>Day 1-2: your target firm's re-drill list above, out loud\nDay 3:   the app's Review queue to zero; retake weak-topic quizzes\nDay 4:   the three build-it exercises you skipped (be honest)\nDay 5:   full InterviewDB PDF cold, 90 seconds per question, spoken\nWeekend: rest. Fatigue costs more than one more cram day buys.</pre><p><b>Try it:</b> record yourself (phone voice memo) answering \"walk me through what happens when I push_back into a full vector\" for 90 seconds. Listen back. Every \"um, I think\" is a spot for one more rep — verbal fluency under pressure is trained, not innate.</p>",
+keyPoints:["Know your target firm's lean; verify with current interview reports.","C++'s pitch: RAII determinism + zero-cost abstractions.","No GC = no surprise pauses — the HFT reason.","Every answer has a second level; volunteer it before being asked."]},
+
+{id:24,week:10,weekTheme:"Integration",topic:"Memory",title:"Sizes, Alignment & Padding",
+teaser:"The 'how many bytes?' family of questions.",
+body:"<p>Your question bank has a whole family of \"how many bytes?\" questions. They're all one concept — alignment — plus careful arithmetic. Learn the concept once, ace the family.</p><h3>What alignment means</h3><p>\"Memory is 8-byte aligned\" = an 8-byte value must start at an address divisible by 8. Why: the CPU and memory bus fetch data in aligned chunks; a misaligned value can straddle two fetches (slow) or fault outright on some architectures. Every type has an alignment requirement — typically its own size: <code>char</code>→1, <code>int</code>→4, <code>double</code>/pointers→8.</p><h3>Struct padding — see it, then predict it</h3><pre>struct S1 { int a; char b; };\nsizeof(S1) == 8   // not 5!\n// layout: [a a a a][b][pad pad pad]\n// padded to a multiple of the largest member's alignment (4),\n// so in an S1 array every element's int stays 4-aligned\n\nstruct S3 { char x; double d; char y; };\nsizeof(S3) == 24  // [x][7 pad][d×8][y][7 pad]\nstruct S4 { double d; char x; char y; };\nsizeof(S4) == 16  // same data, reordered: [d×8][x][y][6 pad]\n// Member ORDER changes struct size — real optimization, real question.</pre><p>Print <code>sizeof</code> and <code>alignof</code> for all of these — two minutes, permanent intuition.</p><h3>Worked interview problems (from your notes, solved slowly)</h3><p><b>Q: Array of 1000 ints, values 0-1,000,000. Bytes?</b></p><pre>Step 1: what fits 1,000,000?  2^20 ≈ 1.05M → needs 20 bits.\n        16-bit max = 65,535 → too small. 32-bit int → fits.\nStep 2: 1000 × 4 = 4000 bytes.\nBonus:  \"bit-packed it'd be ~2500 bytes (20 bits × 1000), but\n        standard types round to byte/word boundaries for\n        addressability — 4000 in practice.\"</pre><p><b>Q: Linked list, 1000 nodes, each {int value; Node* next}. Total?</b></p><pre>Naive:   4 + 8 = 12 → 12,000 bytes        ✗ incomplete\nAligned: the 8-byte pointer needs 8-alignment → 4 pad bytes\n         after the int → sizeof(Node) = 16 → 16,000 bytes  ✓\nGreat answer adds: \"...plus per-allocation heap overhead if\nnodes are new'd individually — and terrible cache behavior\nvs a vector (Lesson 22).\"</pre><p><b>Q: sizeof(struct {int; char;})?</b> — 8, walked through above. Always narrate the padding logic, not just the number: the reasoning is what's graded.</p><p><b>Try it:</b> without compiling, predict sizeof for <code>{char, char, int}</code>, <code>{char, int, char}</code>, <code>{int*, char}</code>, and <code>{char[3], short}</code>. Then verify with a program. Score 4/4 and this question family is retired.</p>",
+keyPoints:["Alignment: start addresses divisible by the type's requirement.","struct{int;char;} = 8 bytes (padding), not 5.","1000 ints (values ≤1M) = 4000 bytes — bits needed ≠ bytes used.","{int + ptr} node pads 12 → 16 bytes on 64-bit."]},
+
+{id:25,week:10,weekTheme:"Integration",topic:"Pointers & Language",title:"Classic Implementation Drills",
+teaser:"itoa, stack-from-queues, and the pointer-to-pointer fill-in.",
+body:"<p>Final lesson: the four short implementation drills that recur across every firm's early rounds. Write each one yourself — they're small enough to whiteboard, which is exactly how you'll face them.</p><h3>Drill 1: itoa (int → string, no library help)</h3><pre>std::string itoa(int value) {\n    if (value == 0) return \"0\";\n    bool negative = value &lt; 0;\n    // careful: -INT_MIN overflows int → work in unsigned\n    unsigned v = negative ? -static_cast&lt;unsigned&gt;(value) : value;\n    std::string result;\n    while (v &gt; 0) {\n        result += static_cast&lt;char&gt;('0' + v % 10);  // last digit\n        v /= 10;                                      // drop it\n    }\n    if (negative) result += '-';\n    std::reverse(result.begin(), result.end());\n    return result;\n}</pre><p>The logic: <code>% 10</code> peels digits least-significant-first, so you build the string backward and reverse once at the end. The INT_MIN detail (you can't negate it as an int) is a bonus point most candidates miss.</p><h3>Drill 2: stack using queues (LIFO from FIFO)</h3><pre>class StackFromQueue {\n    std::queue&lt;int&gt; q_;\npublic:\n    void push(int x) {              // O(n)\n        q_.push(x);\n        // rotate: everything that was there moves behind x\n        for (size_t i = 0; i + 1 &lt; q_.size(); ++i) {\n            q_.push(q_.front());\n            q_.pop();\n        }\n    }\n    int pop() {                     // O(1)\n        int v = q_.front(); q_.pop(); return v;\n    }\n};\n// push 1,2,3 → queue after rotations: [3,2,1] → pop gives 3. LIFO ✓</pre><p>The rotate-on-push trick keeps the newest element at the front, so the queue's natural dequeue becomes the stack's pop. (The mirror version — O(1) push, O(n) pop — is equally valid; know both exist.)</p><h3>Drill 3: the pointer-to-pointer fill-in (your PDF's blanks question)</h3><pre>void fct(const char** s) {   // Blank1: takes ADDRESS OF a pointer\n    *s = \"Hello!\";           // Blank2: write through it\n}\nint main() {\n    const char* str;\n    fct(&str);               // Blank3: pass the pointer's address\n    printf(\"%s\\n\", str);    // prints Hello!\n}</pre><p>Why the double pointer: to modify the caller's <i>pointer variable itself</i> (not what it points at), the function needs that variable's address — Lesson 2's \"a pointer is just a variable\" logic applied to a pointer. This exact pattern is also how C APIs return allocated buffers.</p><h3>Drill 4: implement malloc (design sketch — asked as discussion)</h3><pre>Heap = big region + a FREE LIST (linked list of free blocks,\neach with a size header):\n\n[hdr|used 32B][hdr|FREE 64B]→[hdr|FREE 128B]→null\n\nmalloc(n): walk free list → first block ≥ n (first-fit)\n           → split off the excess as a new free block\nfree(p):   mark block free, insert into list\n           → COALESCE with adjacent free neighbors\n             (else fragmentation eats the heap — Lesson 21)</pre><p>Follow-ups to expect: first-fit vs best-fit (speed vs fragmentation), where the header lives (just before the returned pointer — that's how free finds the size), and thread safety (a lock, or per-thread arenas — Lesson 21 again).</p><p><b>Try it:</b> whiteboard (paper, no compiler) itoa and the stack-from-queue, then type and test them. Under 15 minutes each with working code = interview-ready. You've now closed the loop on every coding question in your original PDF.</p>",
+keyPoints:["itoa: %10 / /10 digits backward, then reverse.","Stack-from-queue: rotate on push → O(n) push, O(1) pop.","Modifying a caller's pointer requires passing `&ptr` (pointer-to-pointer).","DIY malloc = free list + split + coalesce."]}
+];
+const QUESTIONS = [
+/* ---- Memory (L1,3,5,21,24) ---- */
+{id:"m1",topic:"Memory",lesson:1,q:"What's the difference between a program and a process?",choices:["They're the same thing once compiled","A program is a passive file on disk; a process is a running instance with its own address space","A process is the source code; a program is the binary","A program runs in RAM; a process runs on disk"],answer:1,explain:"A program is inert bytes on disk. Running it makes the OS create a process: a live instance with its own virtual address space, resources, and execution state. One program can back many processes."},
+{id:"m2",topic:"Memory",lesson:1,q:"Does the CPU execute C++ source code?",choices:["Yes, modern CPUs parse C++ directly","Only simple statements like arithmetic","No — it executes machine instructions produced by the compiler","Only if the program is interpreted"],answer:2,explain:"CPUs only understand machine instructions. The compiler translates C++ into machine code; the CPU runs its fetch-decode-execute cycle over those instructions."},
+{id:"m3",topic:"Memory",lesson:3,q:"Why is stack allocation faster than heap allocation?",choices:["The stack is stored in a faster type of RAM","Stack allocation is just moving the stack pointer; heap allocation requires allocator bookkeeping","The heap is on disk until needed","Stack memory is compressed"],answer:1,explain:"Allocating on the stack is a pointer bump — one instruction. The heap allocator must search free blocks, split them, and do bookkeeping (possibly with locking). Same RAM, very different work."},
+{id:"m4",topic:"Memory",lesson:3,q:"What's wrong with: `int* f() { int x = 5; return &x; }`",choices:["Nothing — it returns a valid pointer","x should be declared const","It returns a dangling pointer — x's stack frame is destroyed when f returns","It leaks memory"],answer:2,explain:"x lives in f's stack frame, which is popped on return. The pointer still holds an address, but the memory is no longer valid — using it is undefined behavior."},
+{id:"m5",topic:"Memory",lesson:3,q:"For a local `std::vector<int> v(1000);`, where do the vector object and its elements live?",choices:["Both on the stack","Both on the heap","Object on the stack; the 1000 ints on the heap","Object on the heap; the ints on the stack"],answer:2,explain:"The vector object itself (pointer + size + capacity, ~24 bytes) is a local on the stack; the element buffer it manages is heap-allocated internally."},
+{id:"m6",topic:"Memory",lesson:5,q:"What does `new` do that `malloc` doesn't?",choices:["Allocates from a separate, faster heap","Constructs the object (runs the constructor) in addition to allocating","Zero-initializes all memory","Registers memory with the garbage collector"],answer:1,explain:"new = allocate + construct, returns a typed pointer, throws bad_alloc on failure. malloc only returns raw uninitialized bytes as void*. That's also why free on a new-ed object skips the destructor."},
+{id:"m7",topic:"Memory",lesson:5,q:"What happens if you `free()` memory that was allocated with `new`?",choices:["It works fine — they use the same allocator","The destructor is skipped and behavior is undefined","The compiler converts it to delete automatically","Only a small performance penalty"],answer:1,explain:"free knows nothing about C++ objects: no destructor runs (leaking whatever it managed), and the allocator families may not match — undefined behavior. Never mix new/delete with malloc/free."},
+{id:"m8",topic:"Memory",lesson:5,q:"What is placement new used for?",choices:["Allocating arrays at aligned addresses","Constructing an object at a memory address you already own, with no allocation","Placing objects in read-only memory","A faster version of new for small objects"],answer:1,explain:"Placement new separates 'get memory' from 'build object here' — used by vector, arenas, and pools. You must later call the destructor manually; there's no matching delete."},
+{id:"m9",topic:"Memory",lesson:5,q:"Why doesn't `std::vector` use `new T[capacity]` internally?",choices:["new[] is deprecated in modern C++","new[] would construct every element immediately, but vector needs uninitialized spare capacity","new[] can't allocate more than 4KB","Arrays can't be resized with new[]"],answer:1,explain:"new[] default-constructs all elements and requires default-constructibility. Vector allocates raw capacity and placement-news elements one at a time, only as they're actually added."},
+{id:"m10",topic:"Memory",lesson:5,q:"By default, how do `new` and `malloc` each signal allocation failure?",choices:["Both return NULL","Both throw exceptions","new throws std::bad_alloc; malloc returns NULL","new returns NULL; malloc aborts the program"],answer:2,explain:"new throws std::bad_alloc (unless you use new(std::nothrow)); malloc returns NULL, which you must check before dereferencing."},
+{id:"m11",topic:"Memory",lesson:24,q:"What is `sizeof(struct { int a; char b; })` on a typical 64-bit system?",choices:["5 bytes","6 bytes","8 bytes","12 bytes"],answer:2,explain:"4 (int) + 1 (char) + 3 padding = 8. The struct is padded to a multiple of its largest member's alignment (4) so arrays of it keep every int aligned."},
+{id:"m12",topic:"Memory",lesson:24,q:"An array of 1000 ints with values 0-1,000,000: how many bytes (using standard types)?",choices:["~2500 bytes","4000 bytes","8000 bytes","1,000,000 bytes"],answer:1,explain:"1,000,000 needs 20 bits — too big for 16-bit, fits in a 4-byte int. 1000 × 4 = 4000 bytes. (Bit-packing could theoretically hit ~2500, but standard types round to byte/word boundaries.)"},
+{id:"m13",topic:"Memory",lesson:24,q:"A linked-list node holds an int and a next-pointer. Its realistic size on a 64-bit system?",choices:["12 bytes — 4 for int, 8 for pointer","16 bytes — padding aligns the 8-byte pointer","10 bytes","20 bytes"],answer:1,explain:"4 + 8 = 12 naively, but the pointer needs 8-byte alignment, so the int is padded out: 16 bytes per node. Flagging padding is the strong answer."},
+{id:"m14",topic:"Memory",lesson:21,q:"Why must a buffer defragmenter use `memmove` instead of `memcpy`?",choices:["memmove is faster","memcpy can't copy more than one page","Source and destination can overlap in the same buffer — memcpy on overlap is undefined behavior","memmove also updates pointers automatically"],answer:2,explain:"Packing objects within one buffer means ranges can overlap. memmove picks a safe copy direction; memcpy assumes no overlap and is UB if they do."},
+{id:"m15",topic:"Memory",lesson:21,q:"What's the core tradeoff of an arena (bump) allocator?",choices:["Slow allocation, but individual frees are fast","Pointer-bump-fast allocation, but you typically free the whole arena at once","It only works for strings","It requires garbage collection"],answer:1,explain:"Allocation is just advancing an offset — like the stack. The cost: no individual deallocation; the arena resets as a whole, so it fits workloads where lifetimes group naturally."},
+{id:"m16",topic:"Memory",lesson:25,q:"Implementing your own malloc: what's the classic underlying data structure?",choices:["A balanced binary tree of allocations","A free list of blocks with size headers, with splitting and coalescing","A hash map from size to address","A stack of pages"],answer:1,explain:"A linked free list: search for a big-enough block (first/best fit), split leftovers, and on free, coalesce with adjacent free blocks to fight fragmentation."},
+
+/* ---- Pointers & Language (L2,4,12,25) ---- */
+{id:"p1",topic:"Pointers & Language",lesson:2,q:"What is a pointer, most precisely?",choices:["A reference to an object","A variable whose value is a memory address","A special CPU register","An index into the heap"],answer:1,explain:"That's the whole trick: it's just a variable holding an address. All the syntax (& to take an address, * to dereference) follows from that."},
+{id:"p2",topic:"Pointers & Language",lesson:2,q:"On a 64-bit system, `sizeof(char*)` vs `sizeof(BigStruct*)`?",choices:["char* is smaller","Both are 8 bytes — a pointer is an address regardless of pointee","Depends on the struct size","BigStruct* is 16 bytes"],answer:1,explain:"A pointer stores an address, and addresses are the same width no matter what lives there. 8 bytes on 64-bit."},
+{id:"p3",topic:"Pointers & Language",lesson:2,q:"How do you check if a system is little-endian?",choices:["Call std::endian_check()","Store 1 in a uint32_t and check if the first byte in memory is 1","Check if pointers are 8 bytes","Compare htons(1) with 1 at compile time"],answer:1,explain:"Reinterpret the int's address as unsigned char* and inspect byte 0. If it's 1, the least-significant byte is stored first: little-endian. (Comparing htons(1)==1 fails at compile time since it's a runtime call — the classic portable check is byte inspection.)"},
+{id:"p4",topic:"Pointers & Language",lesson:4,q:"Which is TRUE of references but not pointers?",choices:["Can be reassigned to another object","Can be null","Must be bound at initialization and can never be reseated","Supports arithmetic"],answer:2,explain:"A reference is an alias fixed at birth. Pointers can be null, reassigned, and offset — references can't (in valid C++)."},
+{id:"p5",topic:"Pointers & Language",lesson:4,q:"Can a reference be null?",choices:["Yes, references are nullable like pointers","No, and it's impossible under any circumstance","Not via valid C++ — though UB (e.g. binding through a null pointer dereference) can technically produce one","Only const references can be null"],answer:2,explain:"The complete answer has both halves: the language guarantees non-null references, but undefined behavior can violate it. Mentioning the nuance is the senior-signal move."},
+{id:"p6",topic:"Pointers & Language",lesson:4,q:"When should a function take a pointer instead of a reference?",choices:["Never — references are always better","When 'no value' (nullptr) is a meaningful state, or reassignment/arithmetic is needed","When the argument is large","When the function is recursive"],answer:1,explain:"Pointers express optionality and reseatability. References express 'always a valid object.' Choose based on the contract you want the signature to state."},
+{id:"p7",topic:"Pointers & Language",lesson:12,q:"Why must template definitions generally live in header files?",choices:["Linkers can't handle templates","The compiler needs the full definition at each call site to instantiate code for each concrete type","Headers compile faster","It's just convention"],answer:1,explain:"A template is a compile-time blueprint. Each translation unit that uses it must see the definition to generate the per-type instantiation."},
+{id:"p8",topic:"Pointers & Language",lesson:12,q:"What is the guaranteed effect of `inline` in modern C++?",choices:["The function is always inlined at every call site","Permits identical definitions across translation units (linkage); actual inlining is up to the compiler","It makes the function constexpr","It removes the function from the symbol table"],answer:1,explain:"Compilers inline by their own heuristics with or without the keyword. inline's guaranteed modern meaning is about the One Definition Rule for header-defined functions."},
+{id:"p9",topic:"Pointers & Language",lesson:12,q:"Why can a function call be slower than the same code inlined?",choices:["The stack is slower than the heap","Call/return overhead plus pipeline and branch-prediction disruption from the jump","Function code lives in slower memory","Calls always flush the TLB"],answer:1,explain:"Beyond the call/return bookkeeping, jumps introduce control-flow uncertainty that can stall the CPU's pipeline; inlined code is straight-line and freely optimizable across the boundary."},
+{id:"p10",topic:"Pointers & Language",lesson:12,q:"With `const char* p`, which is illegal?",choices:["p = otherPtr;","*p = 'x';","reading *p","p++"],answer:1,explain:"const char* = pointer to const char: the pointee can't be modified, but p itself can be reassigned or incremented. (char* const is the reverse.) Read right-to-left."},
+{id:"p11",topic:"Pointers & Language",lesson:25,q:"For `fct` to set the caller's `const char* str` to a new string, its parameter must be:",choices:["const char* s","const char& s","const char** s — the address of the pointer","char s[]"],answer:2,explain:"To modify the caller's pointer variable itself (not what it points at), you pass a pointer to the pointer, and assign via *s = \"Hello!\";. Call it as fct(&str)."},
+{id:"p12",topic:"Pointers & Language",lesson:25,q:"In `itoa`, why do you reverse the string at the end?",choices:["To handle negative numbers","% 10 produces digits least-significant-first","To remove leading zeros","C strings are stored backwards"],answer:1,explain:"Repeated %10 / /10 peels digits from the ones place upward, building the number backward — one reverse at the end fixes it."},
+
+/* ---- RAII & Move (L6,7) ---- */
+{id:"r1",topic:"RAII & Move",lesson:6,q:"What is RAII?",choices:["A reference-counting garbage collection scheme","Tying a resource's lifetime to an object: acquire in constructor, release in destructor","A memory alignment technique","Windows-only exception handling"],answer:1,explain:"Resource Acquisition Is Initialization. Destructors run deterministically at scope exit — even during exception unwinding — so cleanup is guaranteed on every path."},
+{id:"r2",topic:"RAII & Move",lesson:6,q:"Why does C++ favor RAII over garbage collection?",choices:["GC is patented","RAII is deterministic — resources release at a known moment, with no unpredictable pauses","RAII uses less syntax","GC can't handle files"],answer:1,explain:"GC reclaims memory eventually and can pause unpredictably — unacceptable in latency-critical paths. RAII releases at scope exit, deterministically, and covers all resources (locks, sockets, files), not just memory."},
+{id:"r3",topic:"RAII & Move",lesson:6,q:"In what order are member variables destroyed?",choices:["The order listed in the constructor's initializer list","Reverse of their declaration order in the class","Alphabetical","Unspecified"],answer:1,explain:"Construction follows declaration order (not initializer-list order — a classic trap); destruction is the exact reverse."},
+{id:"r4",topic:"RAII & Move",lesson:6,q:"Why does a polymorphic base class need a virtual destructor?",choices:["To make the class abstract","So deleting via a base pointer runs the derived destructor too","Virtual destructors are faster","To allow multiple inheritance"],answer:1,explain:"Without it, delete through a base pointer only runs the base destructor — the derived class's cleanup is skipped: leaks/UB. Rule of thumb: any virtual function ⇒ virtual destructor."},
+{id:"r5",topic:"RAII & Move",lesson:6,q:"A constructor throws halfway through. What happens to already-constructed members?",choices:["They leak — nothing is cleaned up","Their destructors run, in reverse construction order","The object's destructor runs","The program always terminates"],answer:1,explain:"Fully-built subobjects are destroyed in reverse order. The object itself was never fully constructed, so its own destructor is NOT called — but its pieces are cleaned up."},
+{id:"r6",topic:"RAII & Move",lesson:7,q:"What does `std::move` actually do at runtime?",choices:["Copies the object to a new address","Nothing — it's a cast to an rvalue reference enabling move overloads","Deallocates the source","Swaps the two objects"],answer:1,explain:"std::move generates zero instructions itself. It tells overload resolution 'treat this as a temporary, stealing is allowed' — the selected move constructor/assignment does the actual work."},
+{id:"r7",topic:"RAII & Move",lesson:7,q:"Why is moving a heap-backed object O(1) while copying is O(n)?",choices:["Move uses memcpy which is faster","Move steals the internal pointer and nulls the source; copy duplicates the whole buffer","The compiler parallelizes moves","Moves happen at compile time"],answer:1,explain:"Move is a pointer swap plus resetting the source to empty. Copy allocates a new buffer and copies every element."},
+{id:"r8",topic:"RAII & Move",lesson:7,q:"Why is `emplace_back(a, b)` often faster than `push_back(Widget(a, b))`?",choices:["emplace_back skips bounds checking","It constructs the element in place in the vector's storage — no temporary + move","It allocates on the stack","It batches multiple insertions"],answer:1,explain:"push_back builds a temporary then move-constructs it into storage (two constructions); emplace_back forwards the args and placement-news directly in place (one)."},
+{id:"r9",topic:"RAII & Move",lesson:7,q:"What state must a moved-from object be left in?",choices:["Destroyed — using it is UB","Bit-identical to before","Valid but unspecified — safe to destroy or reassign","Null"],answer:2,explain:"The standard requires validity (its destructor must be safe to run, you can assign to it), but its contents are unspecified — don't rely on its old value."},
+{id:"r10",topic:"RAII & Move",lesson:7,q:"Why should move constructors be marked `noexcept`?",choices:["It's required syntax","Otherwise std::vector may copy instead of move during reallocation, for exception-safety","noexcept makes them inline","To prevent them being deleted"],answer:1,explain:"Vector's reallocation needs the strong exception guarantee; it only uses moves it knows can't throw. A throwing (non-noexcept) move makes it fall back to copies."},
+{id:"r11",topic:"RAII & Move",lesson:7,q:"What is the Rule of Zero?",choices:["Never allocate memory","Prefer composing from RAII members so the compiler generates all five special functions","All classes need five special members","Constructors should take zero arguments"],answer:1,explain:"If your members (vector, string, unique_ptr) manage their own resources, you don't hand-write any of the destructor/copy/move quintet — less code, fewer bugs. The Rule of Five is for when you must."},
+
+/* ---- STL (L8,9,10,11) ---- */
+{id:"s1",topic:"STL",lesson:8,q:"What is the time complexity of `vector::push_back`?",choices:["Always O(1)","Always O(n)","Amortized O(1) — occasional O(n) reallocations, exponentially rarer as it grows","O(log n)"],answer:2,explain:"A push that exceeds capacity reallocates and moves everything: O(n). But geometric growth spreads that cost so n pushes total O(n) — amortized O(1) each. Say 'amortized' or expect a follow-up."},
+{id:"s2",topic:"STL",lesson:8,q:"Push 100 elements into an empty vector (doubling growth). Roughly how many reallocations?",choices:["100","50","About 7 (1,2,4,8,16,32,64,128)","1"],answer:2,explain:"Reallocations happen at capacity boundaries: logarithmically many, not linearly. That's the entire point of geometric growth."},
+{id:"s3",topic:"STL",lesson:8,q:"After `v.clear()`, what happens to a vector's capacity?",choices:["Released back to the OS","Unchanged — clear destroys elements but keeps the buffer","Halved","Reset to 16"],answer:1,explain:"Capacity never shrinks automatically. shrink_to_fit() is a non-binding request; the swap trick also works."},
+{id:"s4",topic:"STL",lesson:8,q:"Which operation invalidates ALL iterators/pointers/references into a vector?",choices:["pop_back","Any reallocation (push past capacity, insert, reserve to larger)","Reading v[0]","swap with another vector"],answer:1,explain:"Reallocation moves the whole buffer, so everything pointing into it dangles. erase/pop_back only invalidate from the erased point onward."},
+{id:"s5",topic:"STL",lesson:8,q:"Why would growing capacity by +1 each time make n push_backs O(n²)?",choices:["It wouldn't — it's still O(n)","Every push would trigger an O(current size) reallocation-and-copy","The allocator rejects small increments","Iterators would need rebuilding"],answer:1,explain:"Each push copies all existing elements: 1+2+3+...+n = O(n²). Geometric growth is what buys amortized O(1)."},
+{id:"s6",topic:"STL",lesson:9,q:"What is Small String Optimization?",choices:["Compressing strings under 256 bytes","Storing short strings inline inside the string object, avoiding heap allocation","Interning duplicate strings","Using 16-bit characters for ASCII"],answer:1,explain:"Most strings are short; SSO keeps them in the object's own bytes (~15-22 chars typically). No allocator traffic for the common case."},
+{id:"s7",topic:"STL",lesson:9,q:"Why doesn't moving an SSO string get the usual O(1) move benefit?",choices:["Strings can't be moved","Its data is inline in the object — there's no heap pointer to steal, so bytes must be copied","SSO strings are immutable","The standard forbids it"],answer:1,explain:"Move semantics' O(1) win comes from stealing a heap pointer. SSO data lives inside the object itself, so 'moving' still copies those inline bytes (cheap, but not a pointer steal)."},
+{id:"s8",topic:"STL",lesson:10,q:"How does `std::unordered_map` handle hash collisions?",choices:["It rejects duplicate hashes","Chaining — each bucket holds a list of entries that hashed there","Rehashing on every collision","Linear probing"],answer:1,explain:"Standard library implementations use chaining. Open addressing (probing) is the other family — better locality, trickier deletion — used by many third-party maps."},
+{id:"s9",topic:"STL",lesson:10,q:"When does `unordered_map` lookup degrade to O(n)?",choices:["When the map holds more than 2^16 entries","When all keys collide into one bucket (pathological or adversarial hashing)","After any rehash","When keys are strings"],answer:1,explain:"'O(1)' is average-case, contingent on a good hash and sane load factor. All-keys-one-bucket means scanning a single long chain."},
+{id:"s10",topic:"STL",lesson:10,q:"What triggers a rehash, and what does it cost?",choices:["Every 100 insertions; O(1)","Load factor exceeding its max; O(n) to redistribute all elements into a bigger bucket array","Deleting any key; O(log n)","It never rehashes automatically"],answer:1,explain:"Same geometric-growth logic as vector: occasional O(n) reorganizations, amortized O(1) per insert. Rehashing invalidates iterators."},
+{id:"s11",topic:"STL",lesson:11,q:"When would you pick `std::map` over `unordered_map`?",choices:["When you need faster average lookups","When you need sorted iteration or guaranteed O(log n) worst-case (no rehash latency spikes)","When keys are integers","map is always better"],answer:1,explain:"map's red-black tree gives ordering and predictable worst-case behavior — the latter matters in latency-sensitive systems where an occasional O(n) hiccup is unacceptable."},
+{id:"s12",topic:"STL",lesson:11,q:"kth smallest key: `map` vs `unordered_map`?",choices:["Both O(1)","map: in-order walk, O(k); unordered_map: extract + sort everything, O(n log n)","unordered_map is faster — hash directly to the kth element","Both require full sorts"],answer:1,explain:"The tree is already sorted — walk it. The hash table never was — you must collect and sort all keys. Structure determines the answer."},
+{id:"s13",topic:"STL",lesson:11,q:"How does `std::deque` achieve O(1) push at both ends AND O(1) random access?",choices:["It's a doubly linked list","Fixed-size chunks plus a map of chunk pointers; index math finds any element in two hops","It keeps two vectors back to back","It over-allocates a huge circular buffer"],answer:1,explain:"Segmented storage: push writes into an edge chunk (allocate a new one when full — nothing shifts); d[i] computes chunk = i/chunk_size, offset = i%chunk_size. A linked list could never give O(1) indexing."},
+{id:"s14",topic:"STL",lesson:11,q:"Why is `vector` preferred over `deque` for sequential-scan-heavy workloads?",choices:["deque can't be iterated","vector's single contiguous block is more cache-friendly; deque hops between chunks","vector has a better API","deque is deprecated"],answer:1,explain:"deque's chunk boundaries break perfect contiguity, costing occasional pointer jumps and cache misses. Choose deque only when you truly need O(1) at both ends."},
+
+/* ---- OS & Virtual Memory (L13,14) ---- */
+{id:"o1",topic:"OS & Virtual Memory",lesson:13,q:"Two processes both use address 0x1000 without conflict. Why?",choices:["The OS forbids duplicate addresses","Each has its own virtual address space; page tables map the same virtual address to different physical frames","They time-share the address","0x1000 is a special shared region"],answer:1,explain:"Virtual memory gives every process the illusion of owning the whole address space. Per-process page tables translate to distinct physical frames — this is what memory isolation IS."},
+{id:"o2",topic:"OS & Virtual Memory",lesson:13,q:"A program requests 8GB on a machine with 4GB RAM. What typically happens?",choices:["The allocation always fails immediately","Virtual address space is reserved; pages get physical backing on first touch, with swap as overflow","The OS compresses existing RAM","The program crashes at launch"],answer:1,explain:"Demand paging: virtual reservations aren't physical claims. Pages materialize when touched; cold pages can swap to disk. It works — just slowly if you actually touch it all."},
+{id:"o3",topic:"OS & Virtual Memory",lesson:13,q:"Page fault vs segmentation fault?",choices:["Same thing, different OSes","Page fault: often-normal 'load this page' event; segfault: an invalid access that can't be resolved, escalated as SIGSEGV","Segfaults are recoverable, page faults aren't","Page faults only happen on disk reads"],answer:1,explain:"Page faults are how demand paging works — totally routine. A segfault is the subset where the access was genuinely invalid (null deref, writing read-only memory): no page can fix it."},
+{id:"o4",topic:"OS & Virtual Memory",lesson:13,q:"What is the TLB?",choices:["A disk cache for swapped pages","A small hardware cache of recent virtual→physical translations, skipping page-table walks","The kernel's thread list","A buffer for network packets"],answer:1,explain:"Without it, every memory access would need a multi-level page-table walk. TLB hits make translation nearly free; misses are expensive."},
+{id:"o5",topic:"OS & Virtual Memory",lesson:13,q:"How do you increase TLB hit rate?",choices:["Add more RAM","Improve access locality (contiguous structures) and use huge pages so each entry covers more memory","Disable virtual memory","Use more threads"],answer:1,explain:"Locality reuses cached translations; 2MB huge pages let the same TLB cover 512x the address space per entry. Both are real HFT techniques."},
+{id:"o6",topic:"OS & Virtual Memory",lesson:14,q:"What do threads in one process share, and what's private?",choices:["Share everything including stacks","Share heap, globals, and code; each thread has its own stack and registers","Share only code","Nothing — that's what processes are for"],answer:1,explain:"Shared address space is what makes thread communication fast (plain memory) and dangerous (races). Private stacks keep their call chains separate."},
+{id:"o7",topic:"OS & Virtual Memory",lesson:14,q:"Which is NOT an inter-process communication mechanism?",choices:["Pipes","Shared memory","Sockets","Direct reads of the other process's heap"],answer:3,explain:"Processes can't touch each other's memory by default — that isolation is the point of virtual address spaces. IPC (pipes, shared memory segments, sockets, signals, queues) exists precisely to bridge it."},
+{id:"o8",topic:"OS & Virtual Memory",lesson:14,q:"Why is a process context switch costlier than a thread switch within one process?",choices:["Processes have more registers","Switching address spaces means page-table swap, TLB flush, and cache disruption; same-process threads share those","Thread switches don't save registers","It isn't costlier"],answer:1,explain:"Both save/restore execution state, but a new address space invalidates the TLB and disturbs caches. Threads share their process's page table — that's the cheapness."},
+{id:"o9",topic:"OS & Virtual Memory",lesson:14,q:"Concurrency vs parallelism?",choices:["Synonyms","Concurrency = interleaving via time-slicing (fine on one core); parallelism = literally simultaneous execution on multiple cores","Parallelism is concurrency with locks","Concurrency requires multiple machines"],answer:1,explain:"A single core can be concurrent (rapid context switches create the illusion). True parallelism needs multiple cores doing work at the same instant. Modern systems do both."},
+{id:"o10",topic:"OS & Virtual Memory",lesson:14,q:"How can a single-core computer appear to run many programs at once?",choices:["It can't","The scheduler rapidly context-switches between processes, each running for milliseconds at a time","Programs take turns per hour","Hyperthreading duplicates the core"],answer:1,explain:"Time-slicing: save one task's registers/PC, load another's, repeat fast enough that everything looks simultaneous. Context switches have real cost, which is why thrashing hurts."},
+
+/* ---- Concurrency (L17,18,19) ---- */
+{id:"c1",topic:"Concurrency",lesson:17,q:"Two threads each run `counter++` 1M times without synchronization. Final count?",choices:["Exactly 2,000,000","Exactly 1,000,000","Unpredictable, typically less than 2,000,000 — increments get lost","Compiler error"],answer:2,explain:"counter++ is LOAD/ADD/STORE. Interleavings where both threads load the same stale value lose updates. That's a race condition: results vary run to run."},
+{id:"c2",topic:"Concurrency",lesson:17,q:"What is a race condition?",choices:["Two threads competing for CPU time","A bug where correctness depends on unpredictable interleaving of threads accessing shared data","When a thread runs too fast","A scheduling optimization"],answer:1,explain:"The hallmark: same code, different results across runs, because operations that look atomic in source are multiple interleaved machine steps."},
+{id:"c3",topic:"Concurrency",lesson:17,q:"Why is `std::lock_guard` preferred over manual lock()/unlock()?",choices:["It's faster","RAII — the mutex unlocks automatically at scope exit, even if an exception is thrown","It can lock multiple mutexes","It spins instead of blocking"],answer:1,explain:"Manual unlock is missed on early returns and exceptions, deadlocking later lockers. lock_guard's destructor guarantees release on every path."},
+{id:"c4",topic:"Concurrency",lesson:17,q:"Thread A holds mutex 1 and wants 2; thread B holds 2 and wants 1. This is:",choices:["A race condition","A livelock","A deadlock — commonly prevented by a consistent global lock-acquisition order","Priority inversion"],answer:2,explain:"Circular waiting, nobody proceeds. If every thread acquires locks in the same order (or uses std::lock to take both atomically), the cycle can't form."},
+{id:"c5",topic:"Concurrency",lesson:17,q:"What problem do condition variables solve?",choices:["They make mutexes reentrant","Letting a thread sleep until a condition holds, instead of burning CPU busy-wait polling","They prevent deadlocks","They replace atomics"],answer:1,explain:"cv.wait releases the lock and sleeps; notify wakes it to recheck. That's why it needs unique_lock — the wait must unlock/relock internally."},
+{id:"c6",topic:"Concurrency",lesson:18,q:"What makes `std::atomic<int>::fetch_add` different from `counter++` on a plain int?",choices:["It's syntactic sugar, same machine code","It compiles to an indivisible hardware instruction (e.g. LOCK XADD) — no thread ever sees it half-done","It takes a hidden mutex","It only works on one core"],answer:1,explain:"The hardware guarantees the read-modify-write happens as one step across all cores. No lost updates, no lock, no blocking."},
+{id:"c7",topic:"Concurrency",lesson:18,q:"Describe Compare-And-Swap (CAS).",choices:["Swap two variables atomically","Atomically: if the value still equals what I expect, replace it; otherwise report failure so I can retry","Compare two threads' priorities","A mutex implementation detail"],answer:1,explain:"CAS is the optimistic primitive under lock-free programming: try, detect interference, retry. compare_exchange_strong in C++."},
+{id:"c8",topic:"Concurrency",lesson:18,q:"Does `volatile` make an operation thread-safe in C++?",choices:["Yes — that's its purpose","Yes, but only for integers","No — it only prevents compiler optimization/reordering of accesses; no atomicity, no ordering guarantees","Only with -O0"],answer:2,explain:"The classic trap. volatile is for memory-mapped hardware and signal handlers. For threads you need std::atomic (or locks) — real atomicity plus memory-ordering semantics."},
+{id:"c9",topic:"Concurrency",lesson:18,q:"When are atomics preferable to a mutex?",choices:["Always — mutexes are obsolete","For simple operations (counters, flags, single-word CAS) in hot paths, avoiding blocking and context switches","Whenever more than 2 threads exist","Only in kernel code"],answer:1,explain:"Atomics shine for small hot-path state. Mutexes remain right for larger critical sections — hand-rolled lock-free structures are notoriously hard to get correct."},
+{id:"c10",topic:"Concurrency",lesson:19,q:"In a thread pool, why must a worker release the queue lock BEFORE running the task it popped?",choices:["The task might lock the same mutex","Holding it blocks all other enqueues/dequeues for the task's whole duration","Locks can't be held across function calls","To let the OS garbage-collect the lock"],answer:1,explain:"The lock protects the queue, not the work. Hold it only for the pop; run the task unlocked so the pool stays live. (A task locking the same mutex would also deadlock — but the general principle is never holding the queue lock during execution.)"},
+{id:"c11",topic:"Concurrency",lesson:19,q:"Best structure for 'always run the soonest-scheduled task next'?",choices:["FIFO queue","Min-heap (priority queue) ordered by trigger time","Sorted linked list","Hash map keyed by time"],answer:1,explain:"A min-heap gives O(log n) insert and O(1) peek at the earliest task — exactly the access pattern a timed scheduler needs."},
+{id:"c12",topic:"Concurrency",lesson:19,q:"How is cancellation typically implemented for tasks sitting in a scheduler's heap?",choices:["Binary search and remove the entry","A shared atomic flag checked just before firing — cancelled tasks are skipped (lazy cancellation)","Rebuild the heap on every cancel","Cancellation isn't possible with heaps"],answer:1,explain:"Heaps can't remove arbitrary elements efficiently. Flag-and-skip is O(1), and the dead entry just gets discarded when it surfaces."},
+{id:"c13",topic:"Concurrency",lesson:19,q:"Why might a low-latency scheduler busy-poll instead of sleeping on a condition variable?",choices:["Condition variables are buggy","OS wake-up latency adds jitter; spinning trades CPU for predictable sub-millisecond reaction","Busy-polling saves power","Sleeping threads can't be woken"],answer:1,explain:"Waking a sleeping thread goes through the OS scheduler — microseconds to milliseconds of variance. HFT systems often pin a core and spin: a deliberate latency-vs-CPU tradeoff."},
+{id:"c14",topic:"Concurrency",lesson:20,q:"Merging N sorted files too big for RAM: what's the memory footprint of the k-way merge?",choices:["O(total data)","O(N) — one buffered element per file plus the heap","O(N²)","O(largest file)"],answer:1,explain:"You only ever hold each file's current front element. That's the entire trick — memory scales with file count, not data size."},
+{id:"c15",topic:"Concurrency",lesson:20,q:"After popping the minimum from the merge heap, what do you push next?",choices:["The next element from any random file","The next element from the SAME file the minimum came from","Nothing until the heap empties","The maximum, to rebalance"],answer:1,explain:"The heap must always represent every file's current front. Popping A's element means A's next element takes its place."},
+{id:"c16",topic:"Concurrency",lesson:20,q:"To sort a single 100GB unsorted file with 8GB RAM:",choices:["Impossible without more RAM","Sort 8GB chunks in memory, write sorted runs to disk, then k-way merge the runs","Use a bigger hash map","Memory-map the file and quicksort it"],answer:1,explain:"External sort: chunk → in-memory sort → spill sorted runs → heap-merge. The same pattern underlies big-data frameworks."},
+
+/* ---- Networking (L15,16) ---- */
+{id:"n1",topic:"Networking",lesson:15,q:"How does TCP guarantee ordered, reliable delivery?",choices:["By sending each packet twice","Sequence numbers + receiver ACKs + retransmission on timeout + reordering at the receiver","By reserving network bandwidth","Routers guarantee it"],answer:1,explain:"Every byte is sequenced; unACKed data is resent; out-of-order segments are buffered and reordered before delivery. That machinery is exactly TCP's overhead vs UDP."},
+{id:"n2",topic:"Networking",lesson:15,q:"TCP flow control vs congestion control?",choices:["Two names for one mechanism","Flow control protects the receiver (advertised buffer window); congestion control protects the network (sender self-throttles on inferred congestion)","Flow control is for UDP","Congestion control is receiver-driven"],answer:1,explain:"Asked as two separate questions specifically to catch conflation. Receiver window vs congestion window — different problems, different mechanisms."},
+{id:"n3",topic:"Networking",lesson:15,q:"Why does market data typically ride UDP multicast rather than TCP?",choices:["UDP compresses better","One packet fans out to thousands of subscribers; TCP's per-connection, retransmit-and-block model can't scale that and adds head-of-line latency","Exchanges can't afford TCP","Multicast requires TLS"],answer:1,explain:"You can't maintain reliable point-to-point streams to every consumer of identical data, and a stale tick is better skipped than blocking behind a retransmission. Order entry, by contrast, needs reliability."},
+{id:"n4",topic:"Networking",lesson:15,q:"What is the TCP three-way handshake?",choices:["SYN → SYN-ACK → ACK to establish a connection before data flows","Three retries before giving up","ACK → SYN → FIN","A checksum exchange"],answer:0,explain:"Both sides exchange initial sequence numbers and confirm before any payload. UDP has no equivalent — you just send."},
+{id:"n5",topic:"Networking",lesson:15,q:"Which application would reasonably choose UDP?",choices:["Bank transfer processing","Live video streaming, where a lost frame is better skipped than waited for","File download","Sending trade orders with no reliability layer"],answer:1,explain:"UDP fits loss-tolerant, latency-sensitive traffic: streaming, DNS, game state, market data. Anything where every byte matters needs TCP or a reliable layer on top."},
+{id:"n6",topic:"Networking",lesson:16,q:"How does traceroute discover the routers along a path?",choices:["It queries a global router registry","Sends packets with TTL=1,2,3...; each router that decrements TTL to 0 drops the packet and replies with ICMP Time Exceeded, identifying itself","Routers append their addresses to the packet","It pings every IP in the subnet"],answer:1,explain:"The TTL trick: routers tell on themselves, one hop per round. The mechanism is identical whether the probes are UDP, ICMP, or TCP."},
+{id:"n7",topic:"Networking",lesson:16,q:"Why do socket programs call `htons()` on port numbers?",choices:["To encrypt the port","Network byte order is big-endian; x86 hosts are little-endian — htons converts","To compress the header","Ports must be hashed"],answer:1,explain:"Multi-byte protocol fields have a standard byte order on the wire. This is Lesson 2's endianness made practical — connecting the two is a strong interview move."},
+{id:"n8",topic:"Networking",lesson:16,q:"On Linux, a socket is best described as:",choices:["A kernel thread","A file descriptor backed by the network stack — read/write/close apply","A reserved memory page","A hardware port on the NIC"],answer:1,explain:"The Unix 'everything is a file descriptor' model includes sockets. SOCK_STREAM = TCP, SOCK_DGRAM = UDP."},
+{id:"n9",topic:"Networking",lesson:16,q:"In traceroute output, why does hop 1 usually respond fastest?",choices:["It has the least traffic","It's the nearest router — one TTL decrement away, shortest round trip","Later hops rate-limit","It's cached"],answer:1,explain:"TTL=1 dies at your gateway. Each subsequent probe travels further before expiring, so RTTs generally grow with hop number."},
+
+/* ---- Performance (L22,23) ---- */
+{id:"f1",topic:"Performance",lesson:22,q:"Iterating a vector<int> vs a list<int> of equal size — both O(n). Why is the vector often 10x+ faster in practice?",choices:["vector uses SIMD automatically","Contiguous memory: each 64-byte cache line fetch serves many elements; list nodes are scattered pointer-chases, each a likely cache miss","list is thread-safe, adding overhead","The compiler unrolls vector loops only"],answer:1,explain:"Big-O ignores constant factors; cache behavior IS the constant factor. This distinction is core to HFT interviews."},
+{id:"f2",topic:"Performance",lesson:22,q:"What is a cache line?",choices:["A queue of pending cache requests","The fixed-size chunk (commonly 64 bytes) in which memory moves between RAM and caches","One row of L1","A CPU pipeline stage"],answer:1,explain:"Touching one byte pulls in its 64-byte neighborhood. Sequential access exploits this; scattered access wastes it."},
+{id:"f3",topic:"Performance",lesson:22,q:"What is false sharing?",choices:["Two threads reading the same constant","Logically-independent variables used by different threads landing on the same cache line, causing constant cross-core invalidation","A race condition on shared data","Copy-on-write gone wrong"],answer:1,explain:"No correctness bug — the threads never touch each other's data — but every write invalidates the other core's copy of the line. Silent, brutal slowdown."},
+{id:"f4",topic:"Performance",lesson:22,q:"How do you fix false sharing between two hot per-thread counters?",choices:["Use a mutex around both","alignas(64) padding so each counter owns its own cache line","Make them volatile","Move them to the heap"],answer:1,explain:"Give each hot variable its own line and the coherence ping-pong stops. Detect it with tools like perf c2c."},
+{id:"f5",topic:"Performance",lesson:22,q:"Rank by typical access latency, fastest first:",choices:["RAM, L3, L2, L1, registers","Registers, L1, L2, L3, RAM","L1, registers, RAM, L2, L3","Registers, L3, L1, L2, RAM"],answer:1,explain:"Registers (~0), L1 (~4 cycles), L2 (~12), L3 (~40), RAM (~100-300). A RAM access costs hundreds of potential instructions — the hierarchy exists to hide that."},
+{id:"f6",topic:"Performance",lesson:23,q:"Why is C++ (not Java) standard for latency-critical trading paths?",choices:["Java can't do networking","Deterministic resource management (RAII, no GC pauses) plus zero-cost abstractions compiling to bare-metal-equivalent code","C++ has more libraries","Java lacks threads"],answer:1,explain:"A GC pause in the hot path is an unbounded latency spike you can't schedule around. C++ frees deterministically and its abstractions compile away."},
+{id:"f7",topic:"Performance",lesson:23,q:"An interviewer keeps asking 'why?' after each correct answer. What are they doing?",choices:["Stalling for time","Probing for the second level — testing whether you understand mechanisms or memorized conclusions","Trying to make you contradict yourself","Checking communication skills only"],answer:1,explain:"Every strong firm does this. The counter: volunteer the deeper level (tradeoffs, edge cases, implementation) before being asked."},
+{id:"f8",topic:"Performance",lesson:23,q:"Which pairing best matches firm reputation to interview emphasis?",choices:["Jane Street: kernel internals; Jump: emplace_back trivia","Jane Street: deep C++ mechanics; HRT: broad systems; Citadel Sec: atomics/latency; Jump: Linux/kernel/CPU depth","All four ask identical questions","HRT: only algorithms"],answer:1,explain:"Directional, not gospel — verify per-desk with current reports. But allocating review time by these leans is smart strategy."},
+{id:"f9",topic:"Performance",lesson:21,q:"Why do low-latency systems replace general-purpose `new`/`malloc` on hot paths?",choices:["malloc is deprecated","General allocators pay for arbitrary sizes/lifetimes/thread-safety — cost, fragmentation, and latency variance that pools/arenas avoid by specializing","new is not thread-safe","Custom allocators use less total RAM"],answer:1,explain:"Arenas bump a pointer; pools pop a free-list slot. Both are nanoseconds, fragmentation-free, and predictable — the general allocator can't promise any of that."},
+{id:"f10",topic:"Performance",lesson:9,q:"Ticker symbols (~4-8 chars) are processed millions of times per second. Why does std::string still perform well?",choices:["The compiler interns them","SSO — short strings live inline in the object, so no heap allocation ever happens","Strings are cached by the OS","It doesn't — HFT firms ban std::string"],answer:1,explain:"SSO makes short-string creation/copying allocation-free. Knowing WHY the default tool is already fast (and when it isn't) is exactly the judgment interviews probe."}
+];
+
+const TOPICS = ["Memory", "Pointers & Language", "RAII & Move", "STL", "OS & Virtual Memory", "Concurrency", "Networking", "Performance"];
+
+/* Deterministically shuffle each question's choices (seeded by question id)
+   so correct answers are evenly spread across A/B/C/D. */
+(function shuffleChoices() {
+  QUESTIONS.forEach(q => {
+    let seed = 0;
+    for (let i = 0; i < q.id.length; i++) seed = (seed * 31 + q.id.charCodeAt(i)) >>> 0;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const idx = [0, 1, 2, 3];
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    q.choices = idx.map(i => q.choices[i]);
+    q.answer = idx.indexOf(q.answer);
+  });
+})();
+
+const LEVELS = [
+  { name: "Intern", xp: 0 },
+  { name: "Junior Dev", xp: 400 },
+  { name: "Mid Level", xp: 1200 },
+  { name: "Senior", xp: 2600 },
+  { name: "Staff", xp: 4600 },
+  { name: "Principal", xp: 7200 },
+  { name: "Distinguished", xp: 10500 }
+];
+
+/* ================= STATE ================= */
+const DEFAULT_STATE = {
+  xp: 0,
+  streak: 0,
+  lastActiveDay: null,      // "YYYY-MM-DD" of last day a daily question was answered
+  dailyAnswered: {},         // day -> {qid, correct}
+  combo: 0,
+  missed: {},                // qid -> {successesNeeded}
+  history: {},               // qid -> {right, wrong}
+  completedLessons: [],
+  practiceIdx: {}            // topic -> next index (rotation)
+};
+let S = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem("cppTrainerV1");
+    if (raw) return Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+function save() { try { localStorage.setItem("cppTrainerV1", JSON.stringify(S)); } catch (e) {} }
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+function daysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+/* ================= XP / LEVELS ================= */
+function levelInfo() {
+  let cur = LEVELS[0], next = null;
+  for (let i = 0; i < LEVELS.length; i++) {
+    if (S.xp >= LEVELS[i].xp) { cur = LEVELS[i]; next = LEVELS[i+1] || null; }
+  }
+  const base = cur.xp, top = next ? next.xp : cur.xp;
+  const pct = next ? Math.min(100, Math.round(100 * (S.xp - base) / (top - base))) : 100;
+  return { cur, next, pct };
+}
+function awardXP(amount, label) {
+  S.xp += amount;
+  save();
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = "+" + amount + " XP" + (label ? " · " + label : "");
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+/* ================= DAILY QUESTION ================= */
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+function dailyQuestion() {
+  const day = todayStr();
+  // Deterministic pick: rotate through the bank by day, offset by hash so it doesn't start at q0
+  const idx = hashStr(day) % QUESTIONS.length;
+  return QUESTIONS[idx];
+}
+
+/* ================= SPACED REPETITION ================= */
+function recordAnswer(q, correct) {
+  if (!S.history[q.id]) S.history[q.id] = { right: 0, wrong: 0 };
+  if (correct) {
+    S.history[q.id].right++;
+    S.combo++;
+    if (S.missed[q.id]) {
+      S.missed[q.id].successesNeeded--;
+      if (S.missed[q.id].successesNeeded <= 0) delete S.missed[q.id];
+    }
+  } else {
+    S.history[q.id].wrong++;
+    S.combo = 0;
+    S.missed[q.id] = { successesNeeded: 2 };
+  }
+  save();
+}
+function reviewQueue() {
+  return Object.keys(S.missed).map(id => QUESTIONS.find(q => q.id === id)).filter(Boolean);
+}
+
+/* ================= RENDER HELPERS ================= */
+const app = document.getElementById("app");
+let view = "today";
+let viewArg = null;
+
+function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmt(s) {
+  // escape, then restore `code` spans
+  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+function headerHTML() {
+  return `<div class="header">
+    <div class="logo">C++<span>Quant</span></div>
+    <div class="stats">
+      <div class="stat streak">&#128293; ${S.streak}</div>
+      <div class="stat xp">&#9889; ${S.xp}</div>
+    </div>
+  </div>`;
+}
+function levelbarHTML() {
+  const li = levelInfo();
+  const nextTxt = li.next ? (li.next.xp - S.xp) + " XP to " + li.next.name : "Max level!";
+  return `<div class="card">
+    <div class="tag gold">Engineering level</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div style="font-weight:800;font-size:20px;">${li.cur.name}</div>
+      <div class="muted" style="font-size:12px;">${nextTxt}</div>
+    </div>
+    <div class="levelbar"><div class="progress-track"><div class="progress-fill" style="width:${li.pct}%"></div></div></div>
+  </div>`;
+}
+
+/* ================= QUESTION WIDGET ================= */
+// mode: "daily" | "practice" | "review"
+function questionHTML(q, mode) {
+  return `<div class="card" id="qcard" data-qid="${q.id}" data-mode="${mode}">
+    <div class="tag">${q.topic}</div>
+    <div class="question-text">${fmt(q.q)}</div>
+    <div class="choices">
+      ${q.choices.map((c, i) => `
+        <button class="choice" data-i="${i}">
+          <span class="letter">${"ABCD"[i]}</span><span>${fmt(c)}</span>
+        </button>`).join("")}
+    </div>
+    <div id="explain-slot"></div>
+    <div id="next-slot"></div>
+  </div>`;
+}
+
+function attachQuestionHandlers(q, mode, onDone) {
+  const card = document.getElementById("qcard");
+  card.querySelectorAll(".choice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = parseInt(btn.dataset.i, 10);
+      const correct = i === q.answer;
+
+      card.querySelectorAll(".choice").forEach((b, j) => {
+        b.disabled = true;
+        if (j === q.answer) b.classList.add("correct");
+        else if (j === i && !correct) b.classList.add("wrong");
+        else b.classList.add("dim");
+      });
+
+      recordAnswer(q, correct);
+
+      let xp = 0;
+      if (correct) {
+        if (mode === "daily") xp = 25;
+        else if (mode === "review") xp = 15;
+        else xp = 10;
+        const comboBonus = Math.min(15, Math.max(0, (S.combo - 1) * 2));
+        xp += comboBonus;
+        awardXP(xp, S.combo > 1 ? S.combo + " combo!" : null);
+      }
+
+      if (mode === "daily") {
+        const day = todayStr();
+        S.dailyAnswered[day] = { qid: q.id, correct };
+        // streak logic
+        if (S.lastActiveDay === null) S.streak = 1;
+        else {
+          const gap = daysBetween(S.lastActiveDay, day);
+          if (gap === 1) S.streak++;
+          else if (gap > 1) S.streak = 1;
+        }
+        S.lastActiveDay = day;
+        save();
+      }
+
+      const slot = document.getElementById("explain-slot");
+      slot.innerHTML = `<div class="explain ${correct ? "good" : "bad"}">
+        <div class="verdict">${correct ? "✓ Correct" + (S.combo > 1 ? '<span class="combo-badge">' + S.combo + ' in a row</span>' : "") : "✗ Not quite — answer: " + "ABCD"[q.answer]}</div>
+        ${fmt(q.explain)}
+        ${!correct ? '<div class="muted" style="margin-top:8px;">Added to your Review queue — answer it correctly twice to clear it.</div>' : ""}
+      </div>`;
+
+      const nextSlot = document.getElementById("next-slot");
+      if (onDone) onDone(correct, nextSlot);
+      // refresh header stats
+      document.querySelector(".stats").innerHTML =
+        `<div class="stat streak">&#128293; ${S.streak}</div><div class="stat xp">&#9889; ${S.xp}</div>`;
+    });
+  });
+}
+
+/* ================= VIEWS ================= */
+function renderToday() {
+  const day = todayStr();
+  const done = S.dailyAnswered[day];
+  const q = dailyQuestion();
+  let html = headerHTML() + levelbarHTML();
+
+  if (done) {
+    const wasCorrect = done.correct;
+    html += `<div class="card">
+      <div class="tag green">Today's question</div>
+      <h2>${wasCorrect ? "✓ Nailed it." : "Done for today."}</h2>
+      <p class="muted" style="margin-top:6px;">You've answered today's question${wasCorrect ? " correctly" : ""}. Come back tomorrow to keep your streak going — or hit Practice for more reps${Object.keys(S.missed).length ? ", or clear your Review queue" : ""}.</p>
+      <button class="btn secondary" onclick="go('practice')">Practice more questions</button>
+      ${Object.keys(S.missed).length ? `<button class="btn" onclick="go('review')">Review ${Object.keys(S.missed).length} missed question${Object.keys(S.missed).length>1?"s":""}</button>` : ""}
+    </div>`;
+  } else {
+    html += `<div class="card" style="padding:0;border:none;background:none;margin-bottom:0;">
+      <div class="tag green" style="margin-left:4px;">Today's question · +25 XP</div>
+    </div>`;
+    html += questionHTML(q, "daily");
+  }
+
+  // Suggested lesson for today (next uncompleted)
+  const next = LESSONS.find(l => !S.completedLessons.includes(l.id));
+  if (next) {
+    html += `<div class="card">
+      <div class="tag blue">Up next in your plan · Week ${next.week}</div>
+      <h2>${next.title}</h2>
+      <p class="muted">${next.teaser}</p>
+      <button class="btn secondary" onclick="go('lesson', ${next.id})">Start lesson</button>
+    </div>`;
+  }
+  app.innerHTML = html;
+  if (!done) attachQuestionHandlers(q, "daily", () => {});
+}
+
+function renderLessons() {
+  let html = headerHTML();
+  html += `<div class="card" style="margin-bottom:4px;">
+    <h2>10-Week Study Plan</h2>
+    <p class="muted">The compressed Bible, stretched to a saner 2.5-month pace. ${S.completedLessons.length}/${LESSONS.length} lessons complete. Finish a lesson's quiz to mark it done.</p>
+  </div>`;
+  let lastWeek = null;
+  LESSONS.forEach(l => {
+    if (l.week !== lastWeek) { html += `<div class="week-label">Week ${l.week} — ${l.weekTheme}</div>`; lastWeek = l.week; }
+    const done = S.completedLessons.includes(l.id);
+    html += `<button class="lesson-row ${done ? "done" : ""}" onclick="go('lesson', ${l.id})">
+      <span class="num">${done ? "✓" : l.id}</span>
+      <span class="info"><div class="title">${l.title}</div><div class="sub">${l.topic}</div></span>
+    </button>`;
+  });
+  app.innerHTML = html;
+}
+
+function renderLesson(id) {
+  const l = LESSONS.find(x => x.id === id);
+  if (!l) return go("lessons");
+  const done = S.completedLessons.includes(l.id);
+  let html = headerHTML();
+  html += `<button class="backlink" onclick="go('lessons')">&larr; All lessons</button>`;
+  html += `<div class="card">
+    <div class="tag">Week ${l.week} · ${l.topic}</div>
+    <h2 style="font-size:22px;margin-bottom:14px;">${l.title}</h2>
+    <div class="lesson-body">${l.body}</div>
+    <h3>Key points</h3>
+    <ul class="keypoints">${l.keyPoints.map(k => "<li>" + fmt(k) + "</li>").join("")}</ul>
+    ${done
+      ? '<div class="tag green" style="margin-top:8px;">✓ Completed</div>'
+      : `<button class="btn" onclick="startLessonQuiz(${l.id})">Take the quiz</button>`}
+  </div>`;
+  app.innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+let quizState = null;
+function startLessonQuiz(lessonId) {
+  const pool = QUESTIONS.filter(q => q.lesson === lessonId);
+  const qs = shuffle(pool.slice()).slice(0, 3);
+  if (qs.length === 0) { // fallback: same-topic questions
+    const l = LESSONS.find(x => x.id === lessonId);
+    qs.push(...shuffle(QUESTIONS.filter(q => q.topic === l.topic)).slice(0, 3));
+  }
+  quizState = { lessonId, qs, idx: 0, correct: 0 };
+  view = "quiz";
+  renderQuiz();
+}
+function renderQuiz() {
+  const { qs, idx, lessonId } = quizState;
+  const q = qs[idx];
+  let html = headerHTML();
+  html += `<button class="backlink" onclick="go('lesson', ${lessonId})">&larr; Back to lesson</button>`;
+  html += `<div class="muted" style="margin-bottom:10px;font-weight:700;">Question ${idx+1} of ${qs.length}</div>`;
+  html += questionHTML(q, "practice");
+  app.innerHTML = html;
+  window.scrollTo(0, 0);
+  attachQuestionHandlers(q, "practice", (correct, nextSlot) => {
+    if (correct) quizState.correct++;
+    if (idx + 1 < qs.length) {
+      nextSlot.innerHTML = `<button class="btn" id="nextq">Next question</button>`;
+      document.getElementById("nextq").onclick = () => { quizState.idx++; renderQuiz(); };
+    } else {
+      const passed = quizState.correct >= Math.ceil(qs.length * 0.67);
+      nextSlot.innerHTML = `<button class="btn" id="finishq">${passed ? "Finish — mark lesson complete" : "Finish"}</button>`;
+      document.getElementById("finishq").onclick = () => {
+        if (passed && !S.completedLessons.includes(lessonId)) {
+          S.completedLessons.push(lessonId);
+          save();
+          awardXP(40, "Lesson complete!");
+        }
+        go("lesson", lessonId);
+      };
+    }
+  });
+}
+
+let practiceState = { topic: null };
+function renderPractice() {
+  let html = headerHTML();
+  html += `<div class="card">
+    <h2>Practice</h2>
+    <p class="muted">Unlimited reps, +10 XP per correct answer (combo bonuses stack). Pick a topic or go random.</p>
+    <div class="topic-select">
+      <button class="topic-btn ${practiceState.topic === null ? "active" : ""}" onclick="setTopic(null)">All topics</button>
+      ${TOPICS.map(t => `<button class="topic-btn ${practiceState.topic === t ? "active" : ""}" onclick="setTopic('${t}')">${t}</button>`).join("")}
+    </div>
+    <button class="btn" onclick="nextPractice()">Start</button>
+  </div>`;
+  app.innerHTML = html;
+}
+function setTopic(t) { practiceState.topic = t; renderPractice(); }
+function nextPractice() {
+  const pool = practiceState.topic ? QUESTIONS.filter(q => q.topic === practiceState.topic) : QUESTIONS;
+  // prefer least-seen questions
+  const sorted = shuffle(pool.slice()).sort((a, b) => seenCount(a) - seenCount(b));
+  const q = sorted[0];
+  let html = headerHTML();
+  html += `<button class="backlink" onclick="go('practice')">&larr; Topics</button>`;
+  html += questionHTML(q, "practice");
+  app.innerHTML = html;
+  window.scrollTo(0, 0);
+  attachQuestionHandlers(q, "practice", (correct, nextSlot) => {
+    nextSlot.innerHTML = `<button class="btn" id="nextq">Next question</button>`;
+    document.getElementById("nextq").onclick = nextPractice;
+  });
+}
+function seenCount(q) { const h = S.history[q.id]; return h ? h.right + h.wrong : 0; }
+
+function renderReview() {
+  const queue = reviewQueue();
+  let html = headerHTML();
+  if (queue.length === 0) {
+    html += `<div class="empty"><div class="big">&#127881;</div><h2>Review queue clear!</h2>
+      <p class="muted" style="margin-top:8px;">Miss a question anywhere in the app and it lands here. Answer it correctly twice to clear it — that's the spaced repetition loop.</p></div>`;
+    app.innerHTML = html;
+    return;
+  }
+  const q = shuffle(queue.slice())[0];
+  html += `<div class="card" style="padding:14px 20px;margin-bottom:12px;">
+    <span class="tag gold" style="margin:0;">Review · ${queue.length} in queue</span>
+    <span class="muted" style="font-size:13px;margin-left:8px;">+15 XP · needs ${S.missed[q.id].successesNeeded} more correct</span>
+  </div>`;
+  html += questionHTML(q, "review");
+  app.innerHTML = html;
+  attachQuestionHandlers(q, "review", (correct, nextSlot) => {
+    nextSlot.innerHTML = `<button class="btn" id="nextq">${reviewQueue().length ? "Next review" : "Done"}</button>`;
+    document.getElementById("nextq").onclick = () => go("review");
+  });
+}
+
+function renderProfile() {
+  const li = levelInfo();
+  const totalAnswered = Object.values(S.history).reduce((s, h) => s + h.right + h.wrong, 0);
+  const totalRight = Object.values(S.history).reduce((s, h) => s + h.right, 0);
+  const acc = totalAnswered ? Math.round(100 * totalRight / totalAnswered) : 0;
+
+  // per-topic accuracy
+  const topicStats = TOPICS.map(t => {
+    const qs = QUESTIONS.filter(q => q.topic === t);
+    let r = 0, w = 0;
+    qs.forEach(q => { const h = S.history[q.id]; if (h) { r += h.right; w += h.wrong; } });
+    return { t, r, w, acc: (r + w) ? Math.round(100 * r / (r + w)) : null };
+  });
+
+  let html = headerHTML() + levelbarHTML();
+  html += `<div class="row2">
+    <div class="card"><div class="bignum" style="color:var(--gold)">${S.streak}</div><div class="muted">day streak</div></div>
+    <div class="card"><div class="bignum" style="color:var(--blue)">${S.xp}</div><div class="muted">total XP</div></div>
+    <div class="card"><div class="bignum" style="color:var(--green)">${acc}%</div><div class="muted">accuracy</div></div>
+  </div>`;
+  html += `<div class="card"><h2>Progress</h2>
+    <p class="muted">${S.completedLessons.length}/${LESSONS.length} lessons · ${totalAnswered} answers · ${Object.keys(S.missed).length} in review queue</p>
+    <h3>Accuracy by topic</h3>
+    <div class="pill-row">${topicStats.map(s =>
+      `<span class="pill">${s.t}: ${s.acc === null ? "—" : s.acc + "%"}</span>`).join("")}</div>
+  </div>`;
+  html += `<div class="card"><h2>All levels</h2>${LEVELS.map(L =>
+    `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);${S.xp >= L.xp ? "" : "opacity:0.45;"}">
+      <span style="font-weight:700;">${S.xp >= L.xp ? "✓ " : ""}${L.name}</span><span class="muted">${L.xp} XP</span></div>`).join("")}
+  </div>`;
+  html += `<div style="text-align:center;"><button class="reset-link" onclick="if(confirm('Reset ALL progress? This cannot be undone.')){localStorage.removeItem('cppTrainerV1');location.reload();}">Reset all progress</button></div>`;
+  app.innerHTML = html;
+}
+
+/* ================= NAV ================= */
+function go(v, arg) {
+  view = v; viewArg = arg;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active",
+    t.dataset.view === v || (v === "lesson" && t.dataset.view === "lessons") || (v === "quiz" && t.dataset.view === "lessons")));
+  if (v === "today") renderToday();
+  else if (v === "lessons") renderLessons();
+  else if (v === "lesson") renderLesson(arg);
+  else if (v === "practice") renderPractice();
+  else if (v === "review") renderReview();
+  else if (v === "profile") renderProfile();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => go(t.dataset.view)));
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* streak decay check on load: if user skipped >1 day, streak resets visually */
+(function checkStreak() {
+  if (S.lastActiveDay) {
+    const gap = daysBetween(S.lastActiveDay, todayStr());
+    if (gap > 1) { S.streak = 0; save(); }
+  }
+})();
+
+go("today");
+</script>
+</body>
+</html>
