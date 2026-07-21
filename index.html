@@ -196,6 +196,12 @@ body {
 }
 .topic-btn.active { background: rgba(88,204,2,0.15); border-color: var(--green); color: var(--green); }
 .reset-link { color: var(--muted); background: none; border: none; font-family: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 20px; }
+.deepdive { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-top: 14px; }
+.deepdive .dd-head { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--blue); margin-bottom: 4px; }
+.deepdive .dd-note { font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.45; }
+.dd-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 7px; color: var(--text); font-size: 14px; font-weight: 600; text-decoration: none; }
+.dd-link:hover { border-color: var(--blue); }
+.dd-link .arrow { margin-left: auto; color: var(--blue); font-weight: 800; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -338,6 +344,40 @@ teaser:"itoa, stack-from-queues, and the pointer-to-pointer fill-in.",
 body:"<p>Final lesson: the four short implementation drills that recur across every firm's early rounds. Write each one yourself — they're small enough to whiteboard, which is exactly how you'll face them.</p><h3>Drill 1: itoa (int → string, no library help)</h3><pre>std::string itoa(int value) {\n    if (value == 0) return \"0\";\n    bool negative = value &lt; 0;\n    // careful: -INT_MIN overflows int → work in unsigned\n    unsigned v = negative ? -static_cast&lt;unsigned&gt;(value) : value;\n    std::string result;\n    while (v &gt; 0) {\n        result += static_cast&lt;char&gt;('0' + v % 10);  // last digit\n        v /= 10;                                      // drop it\n    }\n    if (negative) result += '-';\n    std::reverse(result.begin(), result.end());\n    return result;\n}</pre><p>The logic: <code>% 10</code> peels digits least-significant-first, so you build the string backward and reverse once at the end. The INT_MIN detail (you can't negate it as an int) is a bonus point most candidates miss.</p><h3>Drill 2: stack using queues (LIFO from FIFO)</h3><pre>class StackFromQueue {\n    std::queue&lt;int&gt; q_;\npublic:\n    void push(int x) {              // O(n)\n        q_.push(x);\n        // rotate: everything that was there moves behind x\n        for (size_t i = 0; i + 1 &lt; q_.size(); ++i) {\n            q_.push(q_.front());\n            q_.pop();\n        }\n    }\n    int pop() {                     // O(1)\n        int v = q_.front(); q_.pop(); return v;\n    }\n};\n// push 1,2,3 → queue after rotations: [3,2,1] → pop gives 3. LIFO ✓</pre><p>The rotate-on-push trick keeps the newest element at the front, so the queue's natural dequeue becomes the stack's pop. (The mirror version — O(1) push, O(n) pop — is equally valid; know both exist.)</p><h3>Drill 3: the pointer-to-pointer fill-in (your PDF's blanks question)</h3><pre>void fct(const char** s) {   // Blank1: takes ADDRESS OF a pointer\n    *s = \"Hello!\";           // Blank2: write through it\n}\nint main() {\n    const char* str;\n    fct(&str);               // Blank3: pass the pointer's address\n    printf(\"%s\\n\", str);    // prints Hello!\n}</pre><p>Why the double pointer: to modify the caller's <i>pointer variable itself</i> (not what it points at), the function needs that variable's address — Lesson 2's \"a pointer is just a variable\" logic applied to a pointer. This exact pattern is also how C APIs return allocated buffers.</p><h3>Drill 4: implement malloc (design sketch — asked as discussion)</h3><pre>Heap = big region + a FREE LIST (linked list of free blocks,\neach with a size header):\n\n[hdr|used 32B][hdr|FREE 64B]→[hdr|FREE 128B]→null\n\nmalloc(n): walk free list → first block ≥ n (first-fit)\n           → split off the excess as a new free block\nfree(p):   mark block free, insert into list\n           → COALESCE with adjacent free neighbors\n             (else fragmentation eats the heap — Lesson 21)</pre><p>Follow-ups to expect: first-fit vs best-fit (speed vs fragmentation), where the header lives (just before the returned pointer — that's how free finds the size), and thread safety (a lock, or per-thread arenas — Lesson 21 again).</p><p><b>Try it:</b> whiteboard (paper, no compiler) itoa and the stack-from-queue, then type and test them. Under 15 minutes each with working code = interview-ready. You've now closed the loop on every coding question in your original PDF.</p>",
 keyPoints:["itoa: %10 / /10 digits backward, then reverse.","Stack-from-queue: rotate on push → O(n) push, O(1) pop.","Modifying a caller's pointer requires passing `&ptr` (pointer-to-pointer).","DIY malloc = free list + split + coalesce."]}
 ];
+
+// "Go deeper" external references per lesson. learncpp.com covers the pure-C++
+// language lessons; systems/OS/networking/concurrency topics aren't on learncpp,
+// so those point to the best free alternative (OSTEP, Beej, cppreference, etc.).
+// Links open the real source — we don't reproduce their copyrighted text here.
+const LC = "https://www.learncpp.com/cpp-tutorial/";
+const DEEPDIVE = {
+  1:{note:"learncpp — the compilation pipeline & program structure:",links:[["0.5 Compiler, linker & libraries",LC+"introduction-to-the-compiler-linker-and-libraries/"],["1.1 Structure of a program",LC+"statements-and-the-structure-of-a-program/"],["2.11 Header files",LC+"header-files/"]]},
+  2:{note:"learncpp — sizes, number systems & pointers:",links:[["4.3 Object sizes & sizeof",LC+"object-sizes-and-the-sizeof-operator/"],["5.3 Binary/hex numeral systems",LC+"numeral-systems-decimal-binary-hexadecimal-and-octal/"],["12.7 Introduction to pointers",LC+"introduction-to-pointers/"],["17.9 Pointer arithmetic",LC+"pointer-arithmetic-and-subscripting/"]]},
+  3:{note:"learncpp — direct coverage of this exact topic:",links:[["20.2 The stack and the heap",LC+"the-stack-and-the-heap/"],["7.3 Local variables",LC+"local-variables/"],["12.12 Return by reference/address (dangling)",LC+"return-by-reference-and-return-by-address/"]]},
+  4:{note:"learncpp — references & pointers in depth:",links:[["12.3 Lvalue references",LC+"lvalue-references/"],["12.6 Pass by const reference",LC+"pass-by-const-lvalue-reference/"],["12.8 Null pointers",LC+"null-pointers/"],["12.10 Pass by address",LC+"pass-by-address/"]]},
+  5:{note:"learncpp — new/delete (modern-C++ focus; app covers malloc & placement new):",links:[["19.1 Dynamic allocation: new & delete",LC+"dynamic-memory-allocation-with-new-and-delete/"],["19.2 Dynamically allocating arrays",LC+"dynamically-allocating-arrays/"],["19.5 Void pointers",LC+"void-pointers/"]]},
+  6:{note:"learncpp — constructors, destructors & RAII via smart pointers:",links:[["14.9 Introduction to constructors",LC+"introduction-to-constructors/"],["15.4 Introduction to destructors",LC+"introduction-to-destructors/"],["22.1 Smart pointers & move intro",LC+"introduction-to-smart-pointers-move-semantics/"],["22.5 std::unique_ptr",LC+"stdunique_ptr/"]]},
+  7:{note:"learncpp — the full move-semantics chapter (do the quizzes):",links:[["14.14 Copy constructor",LC+"introduction-to-the-copy-constructor/"],["21.13 Shallow vs deep copying",LC+"shallow-vs-deep-copying/"],["22.2 Rvalue references",LC+"rvalue-references/"],["22.3 Move constructors & assignment",LC+"move-constructors-and-move-assignment/"],["22.4 std::move",LC+"stdmove/"]]},
+  8:{note:"learncpp — the whole std::vector chapter:",links:[["16.2 Intro to std::vector",LC+"introduction-to-stdvector-and-list-constructors/"],["16.10 Resizing & capacity",LC+"stdvector-resizing-and-capacity/"],["16.11 Vector & stack behavior",LC+"stdvector-and-stack-behavior/"]]},
+  9:{note:"learncpp covers the string API; SSO itself is app-only:",links:[["5.7 Introduction to std::string",LC+"introduction-to-stdstring/"],["5.8 std::string_view",LC+"introduction-to-stdstring_view/"],["cppreference: std::string","https://en.cppreference.com/w/cpp/string/basic_string"]]},
+  10:{note:"Not on learncpp (no hash-table internals). Use:",links:[["cppreference: unordered_map","https://en.cppreference.com/w/cpp/container/unordered_map"]]},
+  11:{note:"Not covered in depth on learncpp. Use:",links:[["cppreference: map","https://en.cppreference.com/w/cpp/container/map"],["cppreference: deque","https://en.cppreference.com/w/cpp/container/deque"]]},
+  12:{note:"learncpp — its strongest area; do these quizzes:",links:[["11.6 Function templates",LC+"function-templates/"],["11.7 Template instantiation",LC+"function-template-instantiation/"],["13.13 Class templates",LC+"class-templates/"],["7.9 Inline functions & variables",LC+"inline-functions-and-variables/"],["12.9 Pointers and const",LC+"pointers-and-const/"]]},
+  13:{note:"Not on learncpp (OS topic). Best free source:",links:[["OSTEP — free OS textbook (Virtualization)","https://pages.cs.wisc.edu/~remzi/OSTEP/"]]},
+  14:{note:"Not on learncpp. Use OSTEP + cppreference for std::thread:",links:[["OSTEP — processes & scheduling","https://pages.cs.wisc.edu/~remzi/OSTEP/"],["cppreference: std::thread","https://en.cppreference.com/w/cpp/thread/thread"]]},
+  15:{note:"Not on learncpp (networking). Best free source:",links:[["Beej's Guide to Network Programming","https://beej.us/guide/bgnet/"]]},
+  16:{note:"Not on learncpp. Use:",links:[["Beej's Guide (sockets, send/recv)","https://beej.us/guide/bgnet/"]]},
+  17:{note:"Not on learncpp (concurrency). Use:",links:[["cppreference: std::mutex","https://en.cppreference.com/w/cpp/thread/mutex"],["cppreference: condition_variable","https://en.cppreference.com/w/cpp/thread/condition_variable"]]},
+  18:{note:"Not on learncpp. Use:",links:[["cppreference: std::atomic","https://en.cppreference.com/w/cpp/atomic/atomic"],["cppreference: compare_exchange","https://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange"]]},
+  19:{note:"Not on learncpp — build it from the app lesson. Reference:",links:[["cppreference: condition_variable","https://en.cppreference.com/w/cpp/thread/condition_variable"],["cppreference: std::priority_queue","https://en.cppreference.com/w/cpp/container/priority_queue"]]},
+  20:{note:"Algorithmic — app lesson is primary. Related:",links:[["18.3 Intro to std library algorithms",LC+"introduction-to-standard-library-algorithms/"],["cppreference: std::priority_queue","https://en.cppreference.com/w/cpp/container/priority_queue"]]},
+  21:{note:"Placement new/allocators aren't on learncpp. Use:",links:[["19.5 Void pointers",LC+"void-pointers/"],["cppreference: operator new","https://en.cppreference.com/w/cpp/memory/new/operator_new"]]},
+  22:{note:"Not on learncpp (hardware). Best free sources:",links:[["Drepper: What Every Programmer Should Know About Memory (PDF)","https://www.akkadia.org/drepper/cpumemory.pdf"]]},
+  23:{note:"Strategy/meta — use current interview reports:",links:[["22.1 RAII vs GC (smart pointers intro)",LC+"introduction-to-smart-pointers-move-semantics/"]]},
+  24:{note:"learncpp — sizeof & struct padding:",links:[["4.3 Object sizes & sizeof",LC+"object-sizes-and-the-sizeof-operator/"],["13.7 Intro to structs",LC+"introduction-to-structs-members-and-member-selection/"],["13.11 Struct miscellany (padding)",LC+"struct-miscellany/"]]},
+  25:{note:"learncpp — for the pointer-to-pointer & string drills:",links:[["19.4 Pointers to pointers",LC+"pointers-to-pointers/"],["17.10 C-style strings",LC+"c-style-strings/"],["20.3 Recursion",LC+"recursion/"]]}
+};
+
 const QUESTIONS = [
 /* ---- Memory (L1,3,5,21,24) ---- */
 {id:"m1",topic:"Memory",lesson:1,q:"What's the difference between a program and a process?",choices:["They're the same thing once compiled","A program is a passive file on disk; a process is a running instance with its own address space","A process is the source code; a program is the binary","A program runs in RAM; a process runs on disk"],answer:1,explain:"A program is inert bytes on disk. Running it makes the OS create a process: a live instance with its own virtual address space, resources, and execution state. One program can back many processes."},
@@ -728,6 +768,19 @@ function renderLessons() {
   app.innerHTML = html;
 }
 
+function deepDiveHTML(lessonId) {
+  const d = DEEPDIVE[lessonId];
+  if (!d) return "";
+  return `<div class="deepdive">
+    <div class="dd-head">Go deeper ↗</div>
+    <div class="dd-note">${d.note}</div>
+    ${d.links.map(([label, url]) =>
+      `<a class="dd-link" href="${url}" target="_blank" rel="noopener noreferrer">
+        <span>${label}</span><span class="arrow">↗</span>
+      </a>`).join("")}
+  </div>`;
+}
+
 function renderLesson(id) {
   const l = LESSONS.find(x => x.id === id);
   if (!l) return go("lessons");
@@ -740,6 +793,7 @@ function renderLesson(id) {
     <div class="lesson-body">${l.body}</div>
     <h3>Key points</h3>
     <ul class="keypoints">${l.keyPoints.map(k => "<li>" + fmt(k) + "</li>").join("")}</ul>
+    ${deepDiveHTML(l.id)}
     ${done
       ? `<div class="tag green" style="margin-top:8px;">✓ Completed</div>
          <button class="btn" onclick="startLessonQuiz(${l.id})">Retake quiz</button>
