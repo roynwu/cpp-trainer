@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>C++ Quant Trainer</title>
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="C++ Trainer">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <style>
 :root {
   --bg: #0f1117;
@@ -733,9 +741,56 @@ function renderLesson(id) {
     <h3>Key points</h3>
     <ul class="keypoints">${l.keyPoints.map(k => "<li>" + fmt(k) + "</li>").join("")}</ul>
     ${done
-      ? '<div class="tag green" style="margin-top:8px;">✓ Completed</div>'
-      : `<button class="btn" onclick="startLessonQuiz(${l.id})">Take the quiz</button>`}
+      ? `<div class="tag green" style="margin-top:8px;">✓ Completed</div>
+         <button class="btn" onclick="startLessonQuiz(${l.id})">Retake quiz</button>
+         <button class="btn secondary" onclick="go('answers', ${l.id})">Review answers</button>`
+      : `<button class="btn" onclick="startLessonQuiz(${l.id})">Take the quiz</button>
+         ${lessonAnswered(l.id) ? `<button class="btn secondary" onclick="go('answers', ${l.id})">Review answers</button>` : ""}`}
   </div>`;
+  app.innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+// Has the user answered at least one question tied to this lesson?
+function lessonAnswered(lessonId) {
+  return QUESTIONS.some(q => q.lesson === lessonId && S.history[q.id]);
+}
+
+// Review view: every question in a lesson, with the correct answer,
+// explanation, and the user's own track record revealed.
+function renderAnswers(lessonId) {
+  const l = LESSONS.find(x => x.id === lessonId);
+  if (!l) return go("lessons");
+  const qs = QUESTIONS.filter(q => q.lesson === lessonId);
+  let html = headerHTML();
+  html += `<button class="backlink" onclick="go('lesson', ${lessonId})">&larr; Back to lesson</button>`;
+  html += `<div class="card" style="padding:14px 20px;">
+    <div class="tag blue" style="margin:0;">Review answers · ${l.title}</div>
+    <p class="muted" style="margin-top:8px;">Every question for this lesson, with the correct answer and your track record. Study these, then hit Retake quiz.</p>
+  </div>`;
+  qs.forEach((q, n) => {
+    const h = S.history[q.id];
+    const record = h
+      ? `<span style="color:var(--green);font-weight:700;">${h.right}✓</span> · <span style="color:var(--red);font-weight:700;">${h.wrong}✗</span>`
+      : `<span class="muted">not attempted yet</span>`;
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+        <span class="tag" style="margin:0;">Q${n + 1} · ${q.topic}</span>
+        <span style="font-size:13px;">${record}</span>
+      </div>
+      <div class="question-text" style="margin-bottom:12px;">${fmt(q.q)}</div>
+      <div class="choices">
+        ${q.choices.map((c, i) => `
+          <div class="choice ${i === q.answer ? "correct" : "dim"}" style="cursor:default;">
+            <span class="letter">${"ABCD"[i]}</span><span>${fmt(c)}</span>
+          </div>`).join("")}
+      </div>
+      <div class="explain good" style="margin-top:12px;">
+        <div class="verdict">Answer: ${"ABCD"[q.answer]}</div>${fmt(q.explain)}
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn" onclick="startLessonQuiz(${lessonId})">Retake quiz</button>`;
   app.innerHTML = html;
   window.scrollTo(0, 0);
 }
@@ -873,10 +928,11 @@ function renderProfile() {
 function go(v, arg) {
   view = v; viewArg = arg;
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active",
-    t.dataset.view === v || (v === "lesson" && t.dataset.view === "lessons") || (v === "quiz" && t.dataset.view === "lessons")));
+    t.dataset.view === v || (["lesson","quiz","answers"].includes(v) && t.dataset.view === "lessons")));
   if (v === "today") renderToday();
   else if (v === "lessons") renderLessons();
   else if (v === "lesson") renderLesson(arg);
+  else if (v === "answers") renderAnswers(arg);
   else if (v === "practice") renderPractice();
   else if (v === "review") renderReview();
   else if (v === "profile") renderProfile();
